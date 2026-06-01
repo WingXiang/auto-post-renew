@@ -9,6 +9,11 @@ export interface Brand {
   fb_page_id: string;
   ig_account_id: string;
   meta_access_token: string;
+  logo_url: string;
+  primary_color: string;
+  secondary_color: string;
+  font_preference: string;
+  visual_keywords: string;
 }
 
 export interface Topic {

@@ -39,6 +39,18 @@ _plan_text.txt
 unpacked_plan/
 *.docx
 
+# debug/admin scripts and dumps (kept locally, not for repo)
+_*.py
+exec*.json
+latest_exec*.json
+ee*.json
+cg*.json
+wf*.json
+td_wf.json
+e[0-9]*.json
+e.json
+exe.json
+
 # claude session settings (personal config)
 .claude/settings.local.json
 

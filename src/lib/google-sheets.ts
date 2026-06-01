@@ -195,6 +195,11 @@ export async function initializeSpreadsheet(): Promise<void> {
         "fb_page_id",
         "ig_account_id",
         "meta_access_token",
+        "logo_url",
+        "primary_color",
+        "secondary_color",
+        "font_preference",
+        "visual_keywords",
       ],
     },
     {

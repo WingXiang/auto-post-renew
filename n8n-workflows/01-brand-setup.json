@@ -1,5 +1,5 @@
 {
-  "name": "brand-setup",
+  "name": "品牌初始化",
   "nodes": [
     {
       "parameters": {
@@ -22,7 +22,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const apiKey = $input.first().json.api_key;\nconst expectedKey = $env.N8N_API_KEY;\n\nif (!apiKey || apiKey !== expectedKey) {\n  throw new Error('Unauthorized: Invalid API key');\n}\n\nconst { brand_id, brand_name } = $input.first().json;\n\nif (!brand_id || !brand_name) {\n  throw new Error('Missing required fields: brand_id, brand_name');\n}\n\nreturn [{\n  json: {\n    brand_id,\n    brand_name,\n    log_id: $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+        "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) {\n  throw new Error('Unauthorized');\n}\nconst { brand_id, brand_name } = $input.first().json.body;\n\nif (!brand_id || !brand_name) {\n  throw new Error('Missing required fields: brand_id, brand_name');\n}\n\nreturn [{\n  json: {\n    brand_id,\n    brand_name,\n    log_id: $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
       },
       "id": "a1000001-0000-0000-0000-000000000002",
       "name": "驗證請求",
@@ -44,7 +44,8 @@
         "sheetName": {
           "__rl": true,
           "mode": "list",
-          "value": "pipeline_logs"
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
         },
         "columns": {
           "mappingMode": "defineBelow",
@@ -56,9 +57,80 @@
             "message": "品牌初始化中...",
             "started_at": "={{ $json.started_at }}",
             "finished_at": ""
-          }
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
         },
-        "options": {}
+        "options": {},
+        "authentication": "serviceAccount"
       },
       "id": "a1000001-0000-0000-0000-000000000003",
       "name": "記錄開始",
@@ -69,15 +141,15 @@
         300
       ],
       "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
-          "name": "Google Sheets Account"
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
         }
       }
     },
     {
       "parameters": {
-        "operation": "get",
+        "operation": "read",
         "documentId": {
           "__rl": true,
           "mode": "id",
@@ -86,7 +158,8 @@
         "sheetName": {
           "__rl": true,
           "mode": "list",
-          "value": "brands"
+          "value": "1265514779",
+          "cachedResultName": "brands"
         },
         "filtersUI": {
           "values": [
@@ -96,7 +169,8 @@
             }
           ]
         },
-        "options": {}
+        "options": {},
+        "authentication": "serviceAccount"
       },
       "id": "a1000001-0000-0000-0000-000000000004",
       "name": "讀取品牌資料",
@@ -107,9 +181,9 @@
         300
       ],
       "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
-          "name": "Google Sheets Account"
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
         }
       }
     },
@@ -137,7 +211,8 @@
         "sheetName": {
           "__rl": true,
           "mode": "list",
-          "value": "pipeline_logs"
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
         },
         "columns": {
           "mappingMode": "defineBelow",
@@ -146,11 +221,82 @@
             "status": "success",
             "message": "={{ $json.message }}",
             "finished_at": "={{ $now.toISO() }}"
-          }
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
         },
         "options": {
           "cellFormat": "USER_ENTERED"
-        }
+        },
+        "authentication": "serviceAccount"
       },
       "id": "a1000001-0000-0000-0000-000000000006",
       "name": "記錄完成",
@@ -161,9 +307,9 @@
         300
       ],
       "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
-          "name": "Google Sheets Account"
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
         }
       }
     },

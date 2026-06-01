@@ -31,6 +31,11 @@ export async function PUT(req: NextRequest) {
       "fb_page_id",
       "ig_account_id",
       "meta_access_token",
+      "logo_url",
+      "primary_color",
+      "secondary_color",
+      "font_preference",
+      "visual_keywords",
     ];
     for (const field of allowedFields) {
       if (body[field] !== undefined) {

@@ -127,6 +127,30 @@ export default function PostsPage() {
     );
   };
 
+  const [publishing, setPublishing] = useState<string | null>(null);
+  const handlePublish = async (postId: string) => {
+    if (!confirm("確定要立即發布這篇貼文到 FB 與 IG 嗎？")) return;
+    setPublishing(postId);
+    try {
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "publish", post_id: postId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success !== false) {
+        // Poll for status change
+        setTimeout(fetchPosts, 8000);
+      } else {
+        alert(`發布失敗：${data.error || "請檢查 Meta 設定與 access token"}`);
+      }
+    } catch (e) {
+      alert(`發布失敗：${e instanceof Error ? e.message : "未知錯誤"}`);
+    } finally {
+      setPublishing(null);
+    }
+  };
+
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -350,6 +374,16 @@ export default function PostsPage() {
                       )}
                     </div>
                     <div className="flex gap-1">
+                      {(post.status === "draft" || post.status === "scheduled") && (
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          onClick={() => handlePublish(post.post_id)}
+                          disabled={publishing === post.post_id}
+                        >
+                          {publishing === post.post_id ? "發布中..." : "立即發布"}
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -359,6 +393,13 @@ export default function PostsPage() {
                       </Button>
                     </div>
                   </div>
+                  {post.image_url && (
+                    <img
+                      src={post.image_url}
+                      alt="post image"
+                      className="mb-3 max-h-64 rounded-md border border-gray-200 object-cover"
+                    />
+                  )}
                   <p className="mb-2 whitespace-pre-wrap text-sm text-gray-700">
                     {post.caption || "(尚無文案)"}
                   </p>
@@ -372,6 +413,12 @@ export default function PostsPage() {
                       排程時間:{" "}
                       {new Date(post.scheduled_time).toLocaleString("zh-TW")}
                     </p>
+                  )}
+                  {(post.fb_post_id || post.ig_post_id) && (
+                    <div className="mb-2 flex gap-3 text-xs text-gray-500">
+                      {post.fb_post_id && <span>FB: {post.fb_post_id}</span>}
+                      {post.ig_post_id && <span>IG: {post.ig_post_id}</span>}
+                    </div>
                   )}
                   {post.status === "draft" && (
                     <div className="flex gap-2">

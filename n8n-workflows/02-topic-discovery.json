@@ -1,5 +1,5 @@
 {
-  "name": "topic-discovery",
+  "name": "主題探索",
   "nodes": [
     {
       "parameters": {
@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const apiKey = $input.first().json.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) {\n  throw new Error('Unauthorized');\n}\n\nconst { brand_id } = $input.first().json;\nif (!brand_id) throw new Error('Missing brand_id');\n\nreturn [{\n  json: {\n    brand_id,\n    log_id: 'td-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+        "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) {\n  throw new Error('Unauthorized');\n}\nconst { brand_id } = $input.first().json.body;\nif (!brand_id) throw new Error('Missing brand_id');\n\nreturn [{\n  json: {\n    brand_id,\n    log_id: 'td-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
       },
       "id": "a2000001-0000-0000-0000-000000000002",
       "name": "驗證請求",
@@ -42,7 +42,8 @@
         "sheetName": {
           "__rl": true,
           "mode": "list",
-          "value": "pipeline_logs"
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
         },
         "columns": {
           "mappingMode": "defineBelow",
@@ -54,9 +55,80 @@
             "message": "搜尋熱門主題中...",
             "started_at": "={{ $json.started_at }}",
             "finished_at": ""
-          }
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
         },
-        "options": {}
+        "options": {},
+        "authentication": "serviceAccount"
       },
       "id": "a2000001-0000-0000-0000-000000000003",
       "name": "記錄開始",
@@ -67,15 +139,15 @@
         300
       ],
       "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
-          "name": "Google Sheets Account"
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
         }
       }
     },
     {
       "parameters": {
-        "operation": "get",
+        "operation": "read",
         "documentId": {
           "__rl": true,
           "mode": "id",
@@ -84,7 +156,8 @@
         "sheetName": {
           "__rl": true,
           "mode": "list",
-          "value": "brands"
+          "value": "1265514779",
+          "cachedResultName": "brands"
         },
         "filtersUI": {
           "values": [
@@ -94,7 +167,8 @@
             }
           ]
         },
-        "options": {}
+        "options": {},
+        "authentication": "serviceAccount"
       },
       "id": "a2000001-0000-0000-0000-000000000004",
       "name": "讀取品牌資料",
@@ -105,9 +179,9 @@
         300
       ],
       "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
-          "name": "Google Sheets Account"
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
         }
       }
     },
@@ -171,14 +245,10 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.OPENAI_API_BASE || 'https://api.openai.com' }}/v1/chat/completions",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{ $env.GEMINI_MODEL || 'gemini-2.0-flash' }}:generateContent?key={{ $env.GEMINI_API_KEY }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
-            },
             {
               "name": "Content-Type",
               "value": "application/json"
@@ -187,8 +257,12 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  model: $env.OPENAI_MODEL || 'gpt-4o-mini',\n  messages: [\n    {\n      role: 'system',\n      content: '你是社群媒體內容策略專家。根據品牌資訊和搜尋結果，評估每個主題的相關性。回傳 JSON 陣列，每個項目包含：topic_title（繁體中文標題）、source_url、relevance_score（0-100 整數）。只保留 relevance_score >= 60 的主題。直接回傳 JSON 陣列，不要用 markdown 包裹。'\n    },\n    {\n      role: 'user',\n      content: `品牌資訊：\\n品牌名稱：${$('讀取品牌資料').first().json.brand_name || ''}\\n主題：${$('讀取品牌資料').first().json.theme || ''}\\n目標受眾：${$('讀取品牌資料').first().json.target_audience || ''}\\n\\n搜尋結果：\\n${JSON.stringify($json.results.map(r => ({ title: r.title, url: r.link, snippet: r.snippet })))}`\n    }\n  ],\n  temperature: 0.3\n}) }}",
-        "options": {}
+        "jsonBody": "={{ JSON.stringify({\n  systemInstruction: { parts: [{ text: '你是社群媒體內容策略專家。根據品牌資訊和搜尋結果，評估每個主題的相關性。回傳 JSON 陣列，每個項目包含：topic_title（繁體中文標題）、source_url、relevance_score（0-100 整數）。只保留 relevance_score >= 60 的主題。直接回傳 JSON 陣列，不要用 markdown 包裹。' }] },\n  contents: [{ role: 'user', parts: [{ text: `品牌資訊：\\n品牌名稱：${$('讀取品牌資料').first().json.brand_name || ''}\\n主題：${$('讀取品牌資料').first().json.theme || ''}\\n目標受眾：${$('讀取品牌資料').first().json.target_audience || ''}\\n\\n搜尋結果：\\n${JSON.stringify($json.results.map(r => ({ title: r.title, url: r.link, snippet: r.snippet })))}` }] }],\n  generationConfig: { temperature: 0.3 }\n}) }}",
+        "options": {
+          "retry": {
+            "maxTries": 3
+          }
+        }
       },
       "id": "a2000001-0000-0000-0000-000000000008",
       "name": "AI 評估相關性",
@@ -197,11 +271,14 @@
       "position": [
         1780,
         300
-      ]
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "jsCode": "const brandId = $('驗證請求').first().json.brand_id;\nconst response = $input.first().json;\nconst content = response.choices?.[0]?.message?.content || '[]';\n\nlet topics;\ntry {\n  // 嘗試解析 JSON（可能被 markdown 包裹）\n  const cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  topics = JSON.parse(cleaned);\n} catch (e) {\n  topics = [];\n}\n\nconst now = new Date().toISOString();\n\nreturn topics.map((t, i) => ({\n  json: {\n    topic_id: `topic-${Date.now()}-${i}`,\n    brand_id: brandId,\n    topic_title: t.topic_title || t.title || '',\n    source_url: t.source_url || t.url || '',\n    relevance_score: String(t.relevance_score || 0),\n    status: 'pending',\n    created_at: now\n  }\n}));"
+        "jsCode": "const brandId = $('驗證請求').first().json.brand_id;\nconst response = $input.first().json;\nconst content = response.candidates?.[0]?.content?.parts?.[0]?.text || '[]';\n\nlet topics;\ntry {\n  // 嘗試解析 JSON（可能被 markdown 包裹）\n  const cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  topics = JSON.parse(cleaned);\n} catch (e) {\n  topics = [];\n}\n\nconst now = new Date().toISOString();\n\nreturn topics.map((t, i) => ({\n  json: {\n    topic_id: `topic-${Date.now()}-${i}`,\n    brand_id: brandId,\n    topic_title: t.topic_title || t.title || '',\n    source_url: t.source_url || t.url || '',\n    relevance_score: String(t.relevance_score || 0),\n    status: 'pending',\n    created_at: now\n  }\n}));"
       },
       "id": "a2000001-0000-0000-0000-000000000009",
       "name": "解析 AI 結果",
@@ -223,7 +300,8 @@
         "sheetName": {
           "__rl": true,
           "mode": "list",
-          "value": "topics"
+          "value": "1432193145",
+          "cachedResultName": "topics"
         },
         "columns": {
           "mappingMode": "defineBelow",
@@ -235,9 +313,77 @@
             "relevance_score": "={{ $json.relevance_score }}",
             "status": "={{ $json.status }}",
             "created_at": "={{ $json.created_at }}"
-          }
+          },
+          "schema": [
+            {
+              "id": "topic_id",
+              "displayName": "topic_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "topic_title",
+              "displayName": "topic_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source_url",
+              "displayName": "source_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "relevance_score",
+              "displayName": "relevance_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
         },
-        "options": {}
+        "options": {},
+        "authentication": "serviceAccount"
       },
       "id": "a2000001-0000-0000-0000-000000000010",
       "name": "寫入主題",
@@ -248,9 +394,9 @@
         300
       ],
       "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
-          "name": "Google Sheets Account"
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
         }
       }
     },
@@ -265,7 +411,8 @@
         "sheetName": {
           "__rl": true,
           "mode": "list",
-          "value": "pipeline_logs"
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
         },
         "columns": {
           "mappingMode": "defineBelow",
@@ -274,9 +421,80 @@
             "status": "success",
             "message": "={{ '發現 ' + $input.all().length + ' 個相關主題' }}",
             "finished_at": "={{ $now.toISO() }}"
-          }
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
         },
-        "options": {}
+        "options": {},
+        "authentication": "serviceAccount"
       },
       "id": "a2000001-0000-0000-0000-000000000011",
       "name": "記錄完成",
@@ -287,9 +505,9 @@
         300
       ],
       "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
-          "name": "Google Sheets Account"
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
         }
       }
     },
