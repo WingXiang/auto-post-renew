@@ -14,18 +14,24 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "brand-setup"
     },
     {
       "parameters": {
-        "jsCode": "const apiKey = $input.first().headers['x-api-key'];\nconst expectedKey = $env.N8N_API_KEY;\n\nif (!apiKey || apiKey !== expectedKey) {\n  throw new Error('Unauthorized: Invalid API key');\n}\n\nconst { brand_id, brand_name } = $input.first().json.body;\n\nif (!brand_id || !brand_name) {\n  throw new Error('Missing required fields: brand_id, brand_name');\n}\n\nreturn [{\n  json: {\n    brand_id,\n    brand_name,\n    log_id: $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+        "jsCode": "const apiKey = $input.first().json.api_key;\nconst expectedKey = $env.N8N_API_KEY;\n\nif (!apiKey || apiKey !== expectedKey) {\n  throw new Error('Unauthorized: Invalid API key');\n}\n\nconst { brand_id, brand_name } = $input.first().json;\n\nif (!brand_id || !brand_name) {\n  throw new Error('Missing required fields: brand_id, brand_name');\n}\n\nreturn [{\n  json: {\n    brand_id,\n    brand_name,\n    log_id: $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
       },
       "id": "a1000001-0000-0000-0000-000000000002",
       "name": "驗證請求",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ]
     },
     {
       "parameters": {
@@ -58,7 +64,10 @@
       "name": "記錄開始",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [680, 300],
+      "position": [
+        680,
+        300
+      ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
@@ -93,7 +102,10 @@
       "name": "讀取品牌資料",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [900, 300],
+      "position": [
+        900,
+        300
+      ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
@@ -109,7 +121,10 @@
       "name": "處理品牌設定",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1120, 300]
+      "position": [
+        1120,
+        300
+      ]
     },
     {
       "parameters": {
@@ -141,7 +156,10 @@
       "name": "記錄完成",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [1340, 300],
+      "position": [
+        1340,
+        300
+      ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
@@ -158,38 +176,77 @@
       "name": "回應成功",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1560, 300]
+      "position": [
+        1560,
+        300
+      ]
     }
   ],
   "connections": {
     "Webhook": {
       "main": [
-        [{ "node": "驗證請求", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "驗證請求",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "驗證請求": {
       "main": [
-        [{ "node": "記錄開始", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "記錄開始",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "記錄開始": {
       "main": [
-        [{ "node": "讀取品牌資料", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "讀取品牌資料",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "讀取品牌資料": {
       "main": [
-        [{ "node": "處理品牌設定", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "處理品牌設定",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "處理品牌設定": {
       "main": [
-        [{ "node": "記錄完成", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "記錄完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "記錄完成": {
       "main": [
-        [{ "node": "回應成功", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "回應成功",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
@@ -202,6 +259,8 @@
     "instanceId": ""
   },
   "tags": [
-    { "name": "auto-post-renew" }
+    {
+      "name": "auto-post-renew"
+    }
   ]
 }

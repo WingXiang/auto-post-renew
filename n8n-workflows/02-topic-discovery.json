@@ -12,24 +12,38 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "topic-discovery"
     },
     {
       "parameters": {
-        "jsCode": "const apiKey = $input.first().headers['x-api-key'];\nif (!apiKey || apiKey !== $env.N8N_API_KEY) {\n  throw new Error('Unauthorized');\n}\n\nconst { brand_id } = $input.first().json.body;\nif (!brand_id) throw new Error('Missing brand_id');\n\nreturn [{\n  json: {\n    brand_id,\n    log_id: 'td-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+        "jsCode": "const apiKey = $input.first().json.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) {\n  throw new Error('Unauthorized');\n}\n\nconst { brand_id } = $input.first().json;\nif (!brand_id) throw new Error('Missing brand_id');\n\nreturn [{\n  json: {\n    brand_id,\n    log_id: 'td-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
       },
       "id": "a2000001-0000-0000-0000-000000000002",
       "name": "驗證請求",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ]
     },
     {
       "parameters": {
         "operation": "appendOrUpdate",
-        "documentId": { "__rl": true, "mode": "id", "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}" },
-        "sheetName": { "__rl": true, "mode": "list", "value": "pipeline_logs" },
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "pipeline_logs"
+        },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
@@ -48,19 +62,36 @@
       "name": "記錄開始",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [680, 300],
+      "position": [
+        680,
+        300
+      ],
       "credentials": {
-        "googleSheetsOAuth2Api": { "id": "GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets Account" }
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets Account"
+        }
       }
     },
     {
       "parameters": {
         "operation": "get",
-        "documentId": { "__rl": true, "mode": "id", "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}" },
-        "sheetName": { "__rl": true, "mode": "list", "value": "brands" },
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "brands"
+        },
         "filtersUI": {
           "values": [
-            { "lookupColumn": "brand_id", "lookupValue": "={{ $('驗證請求').first().json.brand_id }}" }
+            {
+              "lookupColumn": "brand_id",
+              "lookupValue": "={{ $('驗證請求').first().json.brand_id }}"
+            }
           ]
         },
         "options": {}
@@ -69,9 +100,15 @@
       "name": "讀取品牌資料",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [900, 300],
+      "position": [
+        900,
+        300
+      ],
       "credentials": {
-        "googleSheetsOAuth2Api": { "id": "GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets Account" }
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets Account"
+        }
       }
     },
     {
@@ -82,7 +119,10 @@
       "name": "組合搜尋關鍵字",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1120, 300]
+      "position": [
+        1120,
+        300
+      ]
     },
     {
       "parameters": {
@@ -91,8 +131,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "X-API-KEY", "value": "={{ $env.SERPER_API_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.SERPER_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -104,7 +150,10 @@
       "name": "Serper 搜尋",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 300]
+      "position": [
+        1340,
+        300
+      ]
     },
     {
       "parameters": {
@@ -114,7 +163,10 @@
       "name": "彙整搜尋結果",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1560, 300]
+      "position": [
+        1560,
+        300
+      ]
     },
     {
       "parameters": {
@@ -123,8 +175,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -136,7 +194,10 @@
       "name": "AI 評估相關性",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 300]
+      "position": [
+        1780,
+        300
+      ]
     },
     {
       "parameters": {
@@ -146,13 +207,24 @@
       "name": "解析 AI 結果",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2000, 300]
+      "position": [
+        2000,
+        300
+      ]
     },
     {
       "parameters": {
         "operation": "append",
-        "documentId": { "__rl": true, "mode": "id", "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}" },
-        "sheetName": { "__rl": true, "mode": "list", "value": "topics" },
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "topics"
+        },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
@@ -171,16 +243,30 @@
       "name": "寫入主題",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [2220, 300],
+      "position": [
+        2220,
+        300
+      ],
       "credentials": {
-        "googleSheetsOAuth2Api": { "id": "GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets Account" }
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets Account"
+        }
       }
     },
     {
       "parameters": {
         "operation": "appendOrUpdate",
-        "documentId": { "__rl": true, "mode": "id", "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}" },
-        "sheetName": { "__rl": true, "mode": "list", "value": "pipeline_logs" },
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "pipeline_logs"
+        },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
@@ -196,9 +282,15 @@
       "name": "記錄完成",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [2440, 300],
+      "position": [
+        2440,
+        300
+      ],
       "credentials": {
-        "googleSheetsOAuth2Api": { "id": "GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets Account" }
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets Account"
+        }
       }
     },
     {
@@ -210,24 +302,146 @@
       "name": "回應成功",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2660, 300]
+      "position": [
+        2660,
+        300
+      ]
     }
   ],
   "connections": {
-    "Webhook": { "main": [[{ "node": "驗證請求", "type": "main", "index": 0 }]] },
-    "驗證請求": { "main": [[{ "node": "記錄開始", "type": "main", "index": 0 }]] },
-    "記錄開始": { "main": [[{ "node": "讀取品牌資料", "type": "main", "index": 0 }]] },
-    "讀取品牌資料": { "main": [[{ "node": "組合搜尋關鍵字", "type": "main", "index": 0 }]] },
-    "組合搜尋關鍵字": { "main": [[{ "node": "Serper 搜尋", "type": "main", "index": 0 }]] },
-    "Serper 搜尋": { "main": [[{ "node": "彙整搜尋結果", "type": "main", "index": 0 }]] },
-    "彙整搜尋結果": { "main": [[{ "node": "AI 評估相關性", "type": "main", "index": 0 }]] },
-    "AI 評估相關性": { "main": [[{ "node": "解析 AI 結果", "type": "main", "index": 0 }]] },
-    "解析 AI 結果": { "main": [[{ "node": "寫入主題", "type": "main", "index": 0 }]] },
-    "寫入主題": { "main": [[{ "node": "記錄完成", "type": "main", "index": 0 }]] },
-    "記錄完成": { "main": [[{ "node": "回應成功", "type": "main", "index": 0 }]] }
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "驗證請求",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "驗證請求": {
+      "main": [
+        [
+          {
+            "node": "記錄開始",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "記錄開始": {
+      "main": [
+        [
+          {
+            "node": "讀取品牌資料",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "讀取品牌資料": {
+      "main": [
+        [
+          {
+            "node": "組合搜尋關鍵字",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "組合搜尋關鍵字": {
+      "main": [
+        [
+          {
+            "node": "Serper 搜尋",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serper 搜尋": {
+      "main": [
+        [
+          {
+            "node": "彙整搜尋結果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "彙整搜尋結果": {
+      "main": [
+        [
+          {
+            "node": "AI 評估相關性",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI 評估相關性": {
+      "main": [
+        [
+          {
+            "node": "解析 AI 結果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析 AI 結果": {
+      "main": [
+        [
+          {
+            "node": "寫入主題",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "寫入主題": {
+      "main": [
+        [
+          {
+            "node": "記錄完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "記錄完成": {
+      "main": [
+        [
+          {
+            "node": "回應成功",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {},
-  "meta": { "templateCredsSetupCompleted": false, "instanceId": "" },
-  "tags": [{ "name": "auto-post-renew" }]
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": ""
+  },
+  "tags": [
+    {
+      "name": "auto-post-renew"
+    }
+  ]
 }
