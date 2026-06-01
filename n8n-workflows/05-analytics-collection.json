@@ -1,0 +1,258 @@
+{
+  "name": "analytics-collection",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "analytics-collection",
+        "options": {},
+        "responseMode": "responseNode"
+      },
+      "id": "a5000001-0000-0000-0000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "analytics-collection"
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiKey = $input.first().headers['x-api-key'];\nif (!apiKey || apiKey !== $env.N8N_API_KEY) {\n  throw new Error('Unauthorized');\n}\nconst { brand_id } = $input.first().json.body;\nif (!brand_id) throw new Error('Missing brand_id');\n\nreturn [{\n  json: {\n    brand_id,\n    log_id: 'ac-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+      },
+      "id": "a5000001-0000-0000-0000-000000000002",
+      "name": "驗證請求",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": { "__rl": true, "mode": "id", "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}" },
+        "sheetName": { "__rl": true, "mode": "list", "value": "pipeline_logs" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $json.log_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "workflow_name": "analytics-collection",
+            "status": "running",
+            "message": "收集貼文數據中...",
+            "started_at": "={{ $json.started_at }}",
+            "finished_at": ""
+          }
+        },
+        "options": {}
+      },
+      "id": "a5000001-0000-0000-0000-000000000003",
+      "name": "記錄開始",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [680, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets Account" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentId": { "__rl": true, "mode": "id", "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}" },
+        "sheetName": { "__rl": true, "mode": "list", "value": "brands" },
+        "filtersUI": { "values": [{ "lookupColumn": "brand_id", "lookupValue": "={{ $('驗證請求').first().json.brand_id }}" }] },
+        "options": {}
+      },
+      "id": "a5000001-0000-0000-0000-000000000004",
+      "name": "讀取品牌",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [900, 200],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets Account" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentId": { "__rl": true, "mode": "id", "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}" },
+        "sheetName": { "__rl": true, "mode": "list", "value": "posts" },
+        "filtersUI": { "values": [
+          { "lookupColumn": "brand_id", "lookupValue": "={{ $('驗證請求').first().json.brand_id }}" },
+          { "lookupColumn": "status", "lookupValue": "published" }
+        ]},
+        "options": {}
+      },
+      "id": "a5000001-0000-0000-0000-000000000005",
+      "name": "讀取已發佈貼文",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [900, 420],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets Account" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const brand = $('讀取品牌').first().json;\nconst posts = $('讀取已發佈貼文').all().map(i => i.json);\n\nif (!brand.meta_access_token) {\n  throw new Error('品牌尚未設定 Meta Access Token');\n}\n\nconst results = [];\nfor (const post of posts) {\n  if (post.fb_post_id) {\n    results.push({\n      post_id: post.post_id,\n      platform_post_id: post.fb_post_id,\n      platform: 'facebook',\n      access_token: brand.meta_access_token\n    });\n  }\n  if (post.ig_post_id) {\n    results.push({\n      post_id: post.post_id,\n      platform_post_id: post.ig_post_id,\n      platform: 'instagram',\n      access_token: brand.meta_access_token\n    });\n  }\n}\n\nreturn results.map(r => ({ json: r }));"
+      },
+      "id": "a5000001-0000-0000-0000-000000000006",
+      "name": "展開貼文清單",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            { "leftValue": "={{ $json.platform }}", "rightValue": "facebook", "operator": { "type": "string", "operation": "equals" } }
+          ]
+        }
+      },
+      "id": "a5000001-0000-0000-0000-000000000007",
+      "name": "平台判斷",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1420, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.platform_post_id }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "fields", "value": "likes.summary(true),comments.summary(true),shares,insights.metric(post_impressions_unique)" },
+            { "name": "access_token", "value": "={{ $json.access_token }}" }
+          ]
+        },
+        "options": { "allowUnauthorizedCerts": false }
+      },
+      "id": "a5000001-0000-0000-0000-000000000008",
+      "name": "FB 數據 API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1660, 180]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.platform_post_id }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "metric", "value": "impressions,reach,likes,comments,shares,engagement" },
+            { "name": "access_token", "value": "={{ $json.access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a5000001-0000-0000-0000-000000000009",
+      "name": "IG 數據 API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1660, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const brandId = $('驗證請求').first().json.brand_id;\nconst items = $input.all();\nconst now = new Date().toISOString();\n\nreturn items.map((item, i) => {\n  const data = item.json;\n  const likes = data.likes?.summary?.total_count || data.data?.[0]?.values?.[0]?.value || 0;\n  const comments = data.comments?.summary?.total_count || data.data?.[1]?.values?.[0]?.value || 0;\n  const shares = data.shares?.count || data.data?.[2]?.values?.[0]?.value || 0;\n  const reach = data.insights?.data?.[0]?.values?.[0]?.value || data.data?.[3]?.values?.[0]?.value || 0;\n  const totalInteractions = likes + comments + shares;\n  const engagementRate = reach > 0 ? ((totalInteractions / reach) * 100).toFixed(2) : '0';\n\n  return {\n    json: {\n      analytics_id: `ana-${Date.now()}-${i}`,\n      brand_id: brandId,\n      post_id: $('展開貼文清單').all()[i]?.json?.post_id || '',\n      platform: $('展開貼文清單').all()[i]?.json?.platform || '',\n      likes: String(likes),\n      comments: String(comments),\n      shares: String(shares),\n      reach: String(reach),\n      engagement_rate: engagementRate,\n      collected_at: now\n    }\n  };\n});"
+      },
+      "id": "a5000001-0000-0000-0000-000000000010",
+      "name": "整理數據",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1920, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": { "__rl": true, "mode": "id", "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}" },
+        "sheetName": { "__rl": true, "mode": "list", "value": "analytics" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "analytics_id": "={{ $json.analytics_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "post_id": "={{ $json.post_id }}",
+            "platform": "={{ $json.platform }}",
+            "likes": "={{ $json.likes }}",
+            "comments": "={{ $json.comments }}",
+            "shares": "={{ $json.shares }}",
+            "reach": "={{ $json.reach }}",
+            "engagement_rate": "={{ $json.engagement_rate }}",
+            "collected_at": "={{ $json.collected_at }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "a5000001-0000-0000-0000-000000000011",
+      "name": "寫入數據",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [2140, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets Account" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": { "__rl": true, "mode": "id", "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}" },
+        "sheetName": { "__rl": true, "mode": "list", "value": "pipeline_logs" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $('驗證請求').first().json.log_id }}",
+            "status": "success",
+            "message": "={{ '已收集 ' + $input.all().length + ' 筆數據' }}",
+            "finished_at": "={{ $now.toISO() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "a5000001-0000-0000-0000-000000000012",
+      "name": "記錄完成",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [2360, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets Account" }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { records_collected: $('整理數據').all().length } }) }}"
+      },
+      "id": "a5000001-0000-0000-0000-000000000013",
+      "name": "回應成功",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2580, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "驗證請求", "type": "main", "index": 0 }]] },
+    "驗證請求": { "main": [[{ "node": "記錄開始", "type": "main", "index": 0 }]] },
+    "記錄開始": { "main": [
+      [{ "node": "讀取品牌", "type": "main", "index": 0 },
+       { "node": "讀取已發佈貼文", "type": "main", "index": 0 }]
+    ]},
+    "讀取品牌": { "main": [[{ "node": "展開貼文清單", "type": "main", "index": 0 }]] },
+    "讀取已發佈貼文": { "main": [[{ "node": "展開貼文清單", "type": "main", "index": 0 }]] },
+    "展開貼文清單": { "main": [[{ "node": "平台判斷", "type": "main", "index": 0 }]] },
+    "平台判斷": { "main": [
+      [{ "node": "FB 數據 API", "type": "main", "index": 0 }],
+      [{ "node": "IG 數據 API", "type": "main", "index": 0 }]
+    ]},
+    "FB 數據 API": { "main": [[{ "node": "整理數據", "type": "main", "index": 0 }]] },
+    "IG 數據 API": { "main": [[{ "node": "整理數據", "type": "main", "index": 0 }]] },
+    "整理數據": { "main": [[{ "node": "寫入數據", "type": "main", "index": 0 }]] },
+    "寫入數據": { "main": [[{ "node": "記錄完成", "type": "main", "index": 0 }]] },
+    "記錄完成": { "main": [[{ "node": "回應成功", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateCredsSetupCompleted": false, "instanceId": "" },
+  "tags": [{ "name": "auto-post-renew" }]
+}

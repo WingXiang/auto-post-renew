@@ -1,0 +1,283 @@
+{
+  "name": "customer-identification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "customer-identification",
+        "options": {},
+        "responseMode": "responseNode"
+      },
+      "id": "a7000001-0000-0000-0000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "customer-identification"
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiKey = $input.first().headers['x-api-key'];\nif (!apiKey || apiKey !== $env.N8N_API_KEY) {\n  throw new Error('Unauthorized');\n}\nconst { brand_id } = $input.first().json.body;\nif (!brand_id) throw new Error('Missing brand_id');\n\nreturn [{\n  json: {\n    brand_id,\n    log_id: 'ci-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+      },
+      "id": "a7000001-0000-0000-0000-000000000002",
+      "name": "驗證請求",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": { "__rl": true, "mode": "id", "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}" },
+        "sheetName": { "__rl": true, "mode": "list", "value": "pipeline_logs" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $json.log_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "workflow_name": "customer-identification",
+            "status": "running",
+            "message": "掃描貼文互動識別潛在客戶中...",
+            "started_at": "={{ $json.started_at }}",
+            "finished_at": ""
+          }
+        },
+        "options": {}
+      },
+      "id": "a7000001-0000-0000-0000-000000000003",
+      "name": "記錄開始",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [680, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets Account" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentId": { "__rl": true, "mode": "id", "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}" },
+        "sheetName": { "__rl": true, "mode": "list", "value": "brands" },
+        "filtersUI": { "values": [{ "lookupColumn": "brand_id", "lookupValue": "={{ $('驗證請求').first().json.brand_id }}" }] },
+        "options": {}
+      },
+      "id": "a7000001-0000-0000-0000-000000000004",
+      "name": "讀取品牌",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [900, 200],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets Account" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentId": { "__rl": true, "mode": "id", "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}" },
+        "sheetName": { "__rl": true, "mode": "list", "value": "posts" },
+        "filtersUI": { "values": [
+          { "lookupColumn": "brand_id", "lookupValue": "={{ $('驗證請求').first().json.brand_id }}" },
+          { "lookupColumn": "status", "lookupValue": "published" }
+        ]},
+        "options": {}
+      },
+      "id": "a7000001-0000-0000-0000-000000000005",
+      "name": "讀取貼文",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [900, 420],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets Account" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const brand = $('讀取品牌').first().json;\nconst posts = $('讀取貼文').all().map(i => i.json);\n\nif (!brand.meta_access_token) {\n  throw new Error('品牌尚未設定 Meta Access Token');\n}\n\n// 收集需要抓取留言的貼文\nconst targets = [];\nfor (const post of posts) {\n  if (post.fb_post_id) {\n    targets.push({\n      post_id: post.post_id,\n      platform_post_id: post.fb_post_id,\n      platform: 'facebook',\n      access_token: brand.meta_access_token\n    });\n  }\n  if (post.ig_post_id) {\n    targets.push({\n      post_id: post.post_id,\n      platform_post_id: post.ig_post_id,\n      platform: 'instagram',\n      access_token: brand.meta_access_token\n    });\n  }\n}\n\nreturn targets.map(t => ({ json: t }));"
+      },
+      "id": "a7000001-0000-0000-0000-000000000006",
+      "name": "展開貼文",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.platform_post_id }}/comments",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "fields", "value": "from{id,name},message,created_time" },
+            { "name": "limit", "value": "100" },
+            { "name": "access_token", "value": "={{ $json.access_token }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a7000001-0000-0000-0000-000000000007",
+      "name": "抓取留言",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1420, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allComments = [];\n\nfor (const item of $input.all()) {\n  const comments = item.json.data || [];\n  const postId = $('展開貼文').all().find((_, idx) => idx === $input.all().indexOf(item))?.json?.post_id || '';\n  \n  for (const c of comments) {\n    allComments.push({\n      post_id: postId,\n      user_name: c.from?.name || '匿名',\n      user_id: c.from?.id || '',\n      message: c.message || '',\n      created_time: c.created_time || ''\n    });\n  }\n}\n\nif (allComments.length === 0) {\n  return [{ json: { no_comments: true, comments: [] } }];\n}\n\nreturn [{ json: { no_comments: false, comments: allComments } }];"
+      },
+      "id": "a7000001-0000-0000-0000-000000000008",
+      "name": "彙整留言",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            { "leftValue": "={{ $json.no_comments }}", "rightValue": false, "operator": { "type": "boolean", "operation": "equals" } }
+          ]
+        }
+      },
+      "id": "a7000001-0000-0000-0000-000000000009",
+      "name": "有留言?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1860, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.OPENAI_API_BASE || 'https://api.openai.com' }}/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: $env.OPENAI_MODEL || 'gpt-4o-mini',\n  messages: [\n    {\n      role: 'system',\n      content: '你是客戶開發專家。分析社群貼文留言，識別有購買意向或高度興趣的潛在客戶。回傳 JSON 陣列，每個項目包含：display_name（留言者名稱）、interaction_type（comment/like/share）、interaction_content（留言內容摘要）、post_id、suggested_action（建議的跟進行動，繁體中文）。只回傳有明確購買意向或詢問的留言者。直接回傳 JSON 陣列。'\n    },\n    {\n      role: 'user',\n      content: `品牌：${$('讀取品牌').first().json.brand_name}\\n目標受眾：${$('讀取品牌').first().json.target_audience}\\n\\n留言資料：\\n${JSON.stringify($json.comments.slice(0, 50))}`\n    }\n  ],\n  temperature: 0.3\n}) }}",
+        "options": {}
+      },
+      "id": "a7000001-0000-0000-0000-000000000010",
+      "name": "AI 識別客戶",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2100, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const brandId = $('驗證請求').first().json.brand_id;\nconst response = $input.first().json;\nconst content = response.choices?.[0]?.message?.content || '[]';\n\nlet customers;\ntry {\n  const cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  customers = JSON.parse(cleaned);\n} catch (e) {\n  customers = [];\n}\n\nconst now = new Date().toISOString();\n\nreturn customers.map((c, i) => ({\n  json: {\n    customer_id: `cust-${Date.now()}-${i}`,\n    brand_id: brandId,\n    display_name: c.display_name || '',\n    interaction_type: c.interaction_type || 'comment',\n    interaction_content: c.interaction_content || '',\n    post_id: c.post_id || '',\n    suggested_action: c.suggested_action || '',\n    status: 'new',\n    identified_at: now\n  }\n}));"
+      },
+      "id": "a7000001-0000-0000-0000-000000000011",
+      "name": "解析客戶",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2320, 200]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": { "__rl": true, "mode": "id", "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}" },
+        "sheetName": { "__rl": true, "mode": "list", "value": "potential_customers" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "customer_id": "={{ $json.customer_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "display_name": "={{ $json.display_name }}",
+            "interaction_type": "={{ $json.interaction_type }}",
+            "interaction_content": "={{ $json.interaction_content }}",
+            "post_id": "={{ $json.post_id }}",
+            "suggested_action": "={{ $json.suggested_action }}",
+            "status": "={{ $json.status }}",
+            "identified_at": "={{ $json.identified_at }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "a7000001-0000-0000-0000-000000000012",
+      "name": "寫入客戶",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [2540, 200],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets Account" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": { "__rl": true, "mode": "id", "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}" },
+        "sheetName": { "__rl": true, "mode": "list", "value": "pipeline_logs" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $('驗證請求').first().json.log_id }}",
+            "status": "success",
+            "message": "={{ '識別出 ' + $input.all().length + ' 位潛在客戶' }}",
+            "finished_at": "={{ $now.toISO() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "a7000001-0000-0000-0000-000000000013",
+      "name": "記錄完成",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [2760, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets Account" }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { customers_found: $('解析客戶').all()?.length || 0 } }) }}"
+      },
+      "id": "a7000001-0000-0000-0000-000000000014",
+      "name": "回應成功",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2980, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { customers_found: 0, message: '本次掃描未發現留言' } }) }}"
+      },
+      "id": "a7000001-0000-0000-0000-000000000015",
+      "name": "回應無留言",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2100, 420]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "驗證請求", "type": "main", "index": 0 }]] },
+    "驗證請求": { "main": [[{ "node": "記錄開始", "type": "main", "index": 0 }]] },
+    "記錄開始": { "main": [
+      [{ "node": "讀取品牌", "type": "main", "index": 0 },
+       { "node": "讀取貼文", "type": "main", "index": 0 }]
+    ]},
+    "讀取品牌": { "main": [[{ "node": "展開貼文", "type": "main", "index": 0 }]] },
+    "讀取貼文": { "main": [[{ "node": "展開貼文", "type": "main", "index": 0 }]] },
+    "展開貼文": { "main": [[{ "node": "抓取留言", "type": "main", "index": 0 }]] },
+    "抓取留言": { "main": [[{ "node": "彙整留言", "type": "main", "index": 0 }]] },
+    "彙整留言": { "main": [[{ "node": "有留言?", "type": "main", "index": 0 }]] },
+    "有留言?": { "main": [
+      [{ "node": "AI 識別客戶", "type": "main", "index": 0 }],
+      [{ "node": "回應無留言", "type": "main", "index": 0 }]
+    ]},
+    "AI 識別客戶": { "main": [[{ "node": "解析客戶", "type": "main", "index": 0 }]] },
+    "解析客戶": { "main": [[{ "node": "寫入客戶", "type": "main", "index": 0 }]] },
+    "寫入客戶": { "main": [[{ "node": "記錄完成", "type": "main", "index": 0 }]] },
+    "記錄完成": { "main": [[{ "node": "回應成功", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateCredsSetupCompleted": false, "instanceId": "" },
+  "tags": [{ "name": "auto-post-renew" }]
+}

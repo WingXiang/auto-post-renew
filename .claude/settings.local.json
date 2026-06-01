@@ -1,10 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm --version)",
-      "Bash(npx --version)",
-      "Bash(npx create-next-app *)",
-      "Bash(npm show *)"
+      "Bash(Get-ChildItem -Recurse -Force)",
+      "Bash(Select-Object FullName, IsContainer)",
+      "Bash(dir \"F:\\\\Claude Project\\\\auto-post-renew\" /a)"
     ]
   }
 }
