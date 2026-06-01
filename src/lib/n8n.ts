@@ -19,11 +19,8 @@ export async function triggerWorkflow(
     const url = `${N8N_BASE_URL}/webhook/${workflow}`;
     const res = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": N8N_API_KEY,
-      },
-      body: JSON.stringify(payload),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...payload, api_key: N8N_API_KEY }),
     });
 
     if (!res.ok) {
