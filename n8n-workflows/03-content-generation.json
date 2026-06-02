@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-02T05:38:13.349Z",
+  "updatedAt": "2026-06-02T19:04:13.345Z",
   "createdAt": "2026-06-01T08:01:58.313Z",
   "id": "1eM3agOn7NZepRaH",
   "name": "文案產生",
@@ -303,7 +303,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const brand = $('讀取品牌').first().json;\nconst topics = $('讀取已核准主題').all().map(i => i.json);\nconst optimization = $('讀取優化建議').first()?.json || {};\n\nif (topics.length === 0) {\n  throw new Error('沒有已核准的主題可用來生成貼文');\n}\n\nconst topicsText = topics.slice(0, 5).map((t, i) =>\n  `${i + 1}. ${t.topic_title}（來源：${t.source_url}）`\n).join('\\n');\n\nconst optimizationHint = optimization.caption_guidelines\n  ? `\\n\\n過去優化建議：\\n文案：${optimization.caption_guidelines}\\n圖片：${optimization.image_guidelines || '無'}`\n  : '';\n\nreturn [{\n  json: {\n    brand,\n    topics,\n    prompt: `你是社群媒體內容專家。請根據以下品牌資訊和主題，為每個主題生成 1 篇社群貼文。\\n\\n品牌名稱：${brand.brand_name}\\n品牌主題：${brand.theme}\\n風格：${brand.style || '專業且親切'}\\n語調：${brand.tone || '友善、專業'}\\n目標受眾：${brand.target_audience}\\n過去內容範例：${brand.past_content_samples || '無'}${optimizationHint}\\n\\n待生成主題：\\n${topicsText}\\n\\n請為每個主題回傳 JSON 陣列，每個項目包含：\\n- topic_id: 對應的主題 ID\\n- caption: 貼文文案（繁體中文，含 hashtag，150-300字）\\n- image_prompt: 用於 AI 生成配圖的英文提示詞（詳細描述風格、構圖、顏色）\\n- platform: \"both\"（預設同時發 FB 和 IG）\\n\\n直接回傳 JSON 陣列。`\n  }\n}];"
+        "jsCode": "const brand = $('讀取品牌').first().json;\nconst topics = $('讀取已核准主題').all().map(i => i.json);\nconst optimization = $('讀取優化建議').first()?.json || {};\nconst req = $('驗證請求').first().json;\n\nif (topics.length === 0) {\n  throw new Error('沒有主題可以用來生成貼文');\n}\n\n// 優先用 topic_title 從 webhook payload（fan-out 時傳入），否則用 sheet 讀到的\nconst topicTitle = req.topic_title || (topics[0]?.topic_title || '');\nconst brandRelevance = topics[0]?.brand_relevance || '';\nconst suggestedAngles = topics[0]?.suggested_angles || '';\nconst contentType = topics[0]?.content_type || '知識長文';\nconst targetReader = topics[0]?.target_reader || brand.target_audience || '';\n\nconst topicsText = topics.slice(0, 5).map((t, i) =>\n  `${i + 1}. ${t.topic_title}（來源：${t.source_url}）\\n   品牌關聯：${t.brand_relevance || '無'}\\n   建議角度：${t.suggested_angles || '無'}`\n).join('\\n');\n\nconst optimizationHint = optimization.caption_guidelines\n  ? `\\n\\n上週優化建議：\\n文案：${optimization.caption_guidelines}\\n圖片：${optimization.image_guidelines || '無'}`\n  : '';\n\nconst wingStyleRules = `你是 Wing 的個人撰文夥伴。Wing 是台灣的講師和自學顧問（數位顧問），為自由工作者、一人公司老闆、想斜槓的上班族撰寫 Facebook 商業貼文。\n\n━━━ Wing 的聲音六原則 ━━━\n1. 溫暖有觀點：友善但有立場。不說教，但不模糊。\n2. 對比句：最愛的句式「不是 X，而是 Y」「不是你不夠努力，而是…」\n3. 虛構人物：用 Paul、Alex、Irene 等虛構客戶讓抽象想法具體化，給他們職業\n4. 第二人稱：全文用「你」稱呼讀者，不斷拉讀者進來\n5. 口語括號：用括號加插話（嗯？）（應該吧...）（對吧？）\n6. 數字錨定：用具體數字「一週 6 位數」「3-5 年」「每月省 20 小時」\n\n━━━ 視覺格式（必須嚴格遵守）━━━\n- 段落之間用 ​（零寬空白）隔開，不用空白行\n- 重大段落分隔用單獨一行「-」\n- 小標題用「▋ 」開頭\n- 列點用「．」開頭\n- Emoji 自然點綴，每篇 1-3 個\n\n━━━ 知識長文結構 ━━━\n【 挑釁性標題 】\n​\n[開場：虛構客戶場景]\n​\n-\n​\n▋ [問題根源]\n​\n[分析 + 對比句]\n​\n-\n​\n▋ [解法/框架]\n​\n[3個．列點]\n​\n-\n​\n▋ [兩個未來對比]\n​\n[一個讓人停下來的問題]\n​\n-\n​\n[溫暖收尾 + 服務提示]\n💬 私訊「自動化」了解更多`;\n\nreturn [{\n  json: {\n    brand,\n    topics,\n    prompt: `${wingStyleRules}\n\n━━━ 品牌資料 ━━━\n品牌名稱：${brand.brand_name}\n品牌主題：${brand.theme}\n風格：${brand.style || '專業、知識、科技感'}\n語調：${brand.tone || '親切實用'}\n目標受眾：${brand.target_audience}\n過去內容範例：${brand.past_content_samples || '無'}${optimizationHint}\n\n━━━ 本次主題 ━━━\n${topicsText}\n\n━━━ 你的任務 ━━━\n針對上面每個主題，各產出 1 篇符合 Wing 風格的貼文。\n以 JSON 陣列回傳，每個項目包含：\n- topic_id: 對應的主題 ID\n- caption: 完整貼文文字（繁體中文，含 hashtag，300-600 字，嚴格套用上方格式規則）\n- image_prompt: 用於 AI 生圖的英文提示詞（具體描述風格、構圖、色彩，呼應品牌主色 ${brand.primary_color || '#2A4189'} 和輔色 ${brand.secondary_color || '#C67E13'}）\n- platform: \"both\"\n\n只回傳 JSON 陣列，不要 markdown 包裹。`\n  }\n}];"
       },
       "id": "a3000001-0000-0000-0000-000000000006",
       "name": "準備 AI 提示",
@@ -969,7 +969,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// MOCK MODE：回傳假貼文回應，符合 Gemini 格式\nconst tt = $('驗證請求').first().json.topic_title || '一人公司 AI 自動化';\nconst escapeForJson = (s) => s.replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"');\nconst caption = \"🚀【測試模式】關於「{topic}」\\\\n\\\\n想像一下：一個人，搭配對的 AI 工具，就能完成過去 5 個人才能做的事。\\\\n\\\\n三個你今天就可以開始的步驟：\\\\n1️⃣ 寫下你最花時間的 3 個重複任務\\\\n2️⃣ 找一個 AI 工具試試其中一項\\\\n3️⃣ 用 1 週評估省下的時間\\\\n\\\\n「自動化不是取代你，是放大你。」\\\\n\\\\n#一人公司 #AI自動化 #個人創業 #數位顧問\".replace('{topic}', tt);\nconst post = {\n  caption: caption,\n  image_prompt: 'Minimalist illustration of one solo entrepreneur with AI assistant icons, clean modern style, blue and orange accents',\n  hashtags: '#一人公司 #AI自動化'\n};\nreturn [{\n  json: {\n    candidates: [{\n      content: { parts: [{ text: JSON.stringify(post) }] }\n    }]\n  }\n}];"
+        "jsCode": "// MOCK MODE - Wing style caption\nconst tt = $('驗證請求').first().json.topic_title || '一人公司 AI 自動化';\nconst topicId = $('驗證請求').first().json.topic_id || '';\n// Shorten topic title for use in heading\nconst topicShort = tt.replace(/^【測試】/, '').slice(0, 20);\nconst caption = \"【 {topic_short}？你可能搞錯重點了 】​\\n​\\nAlex 是一位接案設計師，每次聽到 AI 自動化，第一個反應都是：「這種東西，是大公司在用的吧？」​\\n​\\n（嗯，其實不是。）​\\n​\\n-​\\n​\\n▋ 大多數一人公司沒有導入 AI 的真正原因​\\n​\\n不是不想用。是不知道從哪裡開始。​\\n​\\n不是你不夠努力，而是沒有人告訴你：哪些事情用 AI 處理最有效、哪些事情你才是不可取代的那個。​\\n​\\n當你把時間花在每封重複的報價信、每次格式差不多的提案簡報，你其實是在用最貴的資源（你的時間）做最便宜的工作。​\\n​\\n-​\\n​\\n▋ 三件現在就可以自動化的事​\\n​\\n．客戶詢問回覆：AI 草稿 + 你的最後確認，省下每次 20 分鐘​\\n．報價單生成：填入變數，2 分鐘出一份專業文件​\\n．社群貼文：主題給 AI，你來潤稿，一週內容半天搞定​\\n​\\n-​\\n​\\n▋ 一年後，你會是哪一種人？​\\n​\\n一種：每天還是重複同樣的雜事，時間不夠用，接不了更多客戶。​\\n另一種：讓 AI 處理重複的，你專注在真正有價值的事，收入翻倍但工時沒有增加。​\\n​\\n你現在做的每個選擇，都在決定你是哪一種。​\\n​\\n-​\\n​\\n如果你也想開始但不知道從哪裡下手，我可以幫你拆解。​\\n💬 私訊「自動化」，告訴我你現在最花時間的一件事​\\n​\\n#一人公司 #AI自動化 #數位顧問 #自由工作者\".replace('{topic_short}', topicShort);\nconst posts = [{\n  topic_id: topicId,\n  platform: 'both',\n  caption: caption,\n  image_prompt: 'Minimalist digital illustration, solo entrepreneur working with AI assistant, clean modern style, blue #2A4189 and golden orange #C67E13 accents, Taiwanese professional aesthetic, no text overlay',\n}];\nreturn [{ json: { candidates: [{ content: { parts: [{ text: JSON.stringify(posts) }] } }] } }];"
       },
       "id": "a3000001-0000-0000-0000-00000000mck",
       "name": "假 貼文回應（測試用）",
@@ -1201,9 +1201,9 @@
   "staticData": null,
   "meta": null,
   "pinData": null,
-  "versionId": "6a5d2a07-bb2c-4e3d-9d2b-018045780a79",
-  "activeVersionId": "6a5d2a07-bb2c-4e3d-9d2b-018045780a79",
-  "versionCounter": 49,
+  "versionId": "d7c18191-ab57-4313-b199-d6eeef01f45d",
+  "activeVersionId": "d7c18191-ab57-4313-b199-d6eeef01f45d",
+  "versionCounter": 51,
   "triggerCount": 1,
   "shared": [
     {
@@ -1226,9 +1226,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-06-02T05:38:13.351Z",
-    "createdAt": "2026-06-02T05:38:13.351Z",
-    "versionId": "6a5d2a07-bb2c-4e3d-9d2b-018045780a79",
+    "updatedAt": "2026-06-02T19:04:13.365Z",
+    "createdAt": "2026-06-02T19:04:13.365Z",
+    "versionId": "d7c18191-ab57-4313-b199-d6eeef01f45d",
     "workflowId": "1eM3agOn7NZepRaH",
     "nodes": [
       {
@@ -1527,7 +1527,7 @@
       },
       {
         "parameters": {
-          "jsCode": "const brand = $('讀取品牌').first().json;\nconst topics = $('讀取已核准主題').all().map(i => i.json);\nconst optimization = $('讀取優化建議').first()?.json || {};\n\nif (topics.length === 0) {\n  throw new Error('沒有已核准的主題可用來生成貼文');\n}\n\nconst topicsText = topics.slice(0, 5).map((t, i) =>\n  `${i + 1}. ${t.topic_title}（來源：${t.source_url}）`\n).join('\\n');\n\nconst optimizationHint = optimization.caption_guidelines\n  ? `\\n\\n過去優化建議：\\n文案：${optimization.caption_guidelines}\\n圖片：${optimization.image_guidelines || '無'}`\n  : '';\n\nreturn [{\n  json: {\n    brand,\n    topics,\n    prompt: `你是社群媒體內容專家。請根據以下品牌資訊和主題，為每個主題生成 1 篇社群貼文。\\n\\n品牌名稱：${brand.brand_name}\\n品牌主題：${brand.theme}\\n風格：${brand.style || '專業且親切'}\\n語調：${brand.tone || '友善、專業'}\\n目標受眾：${brand.target_audience}\\n過去內容範例：${brand.past_content_samples || '無'}${optimizationHint}\\n\\n待生成主題：\\n${topicsText}\\n\\n請為每個主題回傳 JSON 陣列，每個項目包含：\\n- topic_id: 對應的主題 ID\\n- caption: 貼文文案（繁體中文，含 hashtag，150-300字）\\n- image_prompt: 用於 AI 生成配圖的英文提示詞（詳細描述風格、構圖、顏色）\\n- platform: \"both\"（預設同時發 FB 和 IG）\\n\\n直接回傳 JSON 陣列。`\n  }\n}];"
+          "jsCode": "const brand = $('讀取品牌').first().json;\nconst topics = $('讀取已核准主題').all().map(i => i.json);\nconst optimization = $('讀取優化建議').first()?.json || {};\nconst req = $('驗證請求').first().json;\n\nif (topics.length === 0) {\n  throw new Error('沒有主題可以用來生成貼文');\n}\n\n// 優先用 topic_title 從 webhook payload（fan-out 時傳入），否則用 sheet 讀到的\nconst topicTitle = req.topic_title || (topics[0]?.topic_title || '');\nconst brandRelevance = topics[0]?.brand_relevance || '';\nconst suggestedAngles = topics[0]?.suggested_angles || '';\nconst contentType = topics[0]?.content_type || '知識長文';\nconst targetReader = topics[0]?.target_reader || brand.target_audience || '';\n\nconst topicsText = topics.slice(0, 5).map((t, i) =>\n  `${i + 1}. ${t.topic_title}（來源：${t.source_url}）\\n   品牌關聯：${t.brand_relevance || '無'}\\n   建議角度：${t.suggested_angles || '無'}`\n).join('\\n');\n\nconst optimizationHint = optimization.caption_guidelines\n  ? `\\n\\n上週優化建議：\\n文案：${optimization.caption_guidelines}\\n圖片：${optimization.image_guidelines || '無'}`\n  : '';\n\nconst wingStyleRules = `你是 Wing 的個人撰文夥伴。Wing 是台灣的講師和自學顧問（數位顧問），為自由工作者、一人公司老闆、想斜槓的上班族撰寫 Facebook 商業貼文。\n\n━━━ Wing 的聲音六原則 ━━━\n1. 溫暖有觀點：友善但有立場。不說教，但不模糊。\n2. 對比句：最愛的句式「不是 X，而是 Y」「不是你不夠努力，而是…」\n3. 虛構人物：用 Paul、Alex、Irene 等虛構客戶讓抽象想法具體化，給他們職業\n4. 第二人稱：全文用「你」稱呼讀者，不斷拉讀者進來\n5. 口語括號：用括號加插話（嗯？）（應該吧...）（對吧？）\n6. 數字錨定：用具體數字「一週 6 位數」「3-5 年」「每月省 20 小時」\n\n━━━ 視覺格式（必須嚴格遵守）━━━\n- 段落之間用 ​（零寬空白）隔開，不用空白行\n- 重大段落分隔用單獨一行「-」\n- 小標題用「▋ 」開頭\n- 列點用「．」開頭\n- Emoji 自然點綴，每篇 1-3 個\n\n━━━ 知識長文結構 ━━━\n【 挑釁性標題 】\n​\n[開場：虛構客戶場景]\n​\n-\n​\n▋ [問題根源]\n​\n[分析 + 對比句]\n​\n-\n​\n▋ [解法/框架]\n​\n[3個．列點]\n​\n-\n​\n▋ [兩個未來對比]\n​\n[一個讓人停下來的問題]\n​\n-\n​\n[溫暖收尾 + 服務提示]\n💬 私訊「自動化」了解更多`;\n\nreturn [{\n  json: {\n    brand,\n    topics,\n    prompt: `${wingStyleRules}\n\n━━━ 品牌資料 ━━━\n品牌名稱：${brand.brand_name}\n品牌主題：${brand.theme}\n風格：${brand.style || '專業、知識、科技感'}\n語調：${brand.tone || '親切實用'}\n目標受眾：${brand.target_audience}\n過去內容範例：${brand.past_content_samples || '無'}${optimizationHint}\n\n━━━ 本次主題 ━━━\n${topicsText}\n\n━━━ 你的任務 ━━━\n針對上面每個主題，各產出 1 篇符合 Wing 風格的貼文。\n以 JSON 陣列回傳，每個項目包含：\n- topic_id: 對應的主題 ID\n- caption: 完整貼文文字（繁體中文，含 hashtag，300-600 字，嚴格套用上方格式規則）\n- image_prompt: 用於 AI 生圖的英文提示詞（具體描述風格、構圖、色彩，呼應品牌主色 ${brand.primary_color || '#2A4189'} 和輔色 ${brand.secondary_color || '#C67E13'}）\n- platform: \"both\"\n\n只回傳 JSON 陣列，不要 markdown 包裹。`\n  }\n}];"
         },
         "id": "a3000001-0000-0000-0000-000000000006",
         "name": "準備 AI 提示",
@@ -2193,7 +2193,7 @@
       },
       {
         "parameters": {
-          "jsCode": "// MOCK MODE：回傳假貼文回應，符合 Gemini 格式\nconst tt = $('驗證請求').first().json.topic_title || '一人公司 AI 自動化';\nconst escapeForJson = (s) => s.replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"');\nconst caption = \"🚀【測試模式】關於「{topic}」\\\\n\\\\n想像一下：一個人，搭配對的 AI 工具，就能完成過去 5 個人才能做的事。\\\\n\\\\n三個你今天就可以開始的步驟：\\\\n1️⃣ 寫下你最花時間的 3 個重複任務\\\\n2️⃣ 找一個 AI 工具試試其中一項\\\\n3️⃣ 用 1 週評估省下的時間\\\\n\\\\n「自動化不是取代你，是放大你。」\\\\n\\\\n#一人公司 #AI自動化 #個人創業 #數位顧問\".replace('{topic}', tt);\nconst post = {\n  caption: caption,\n  image_prompt: 'Minimalist illustration of one solo entrepreneur with AI assistant icons, clean modern style, blue and orange accents',\n  hashtags: '#一人公司 #AI自動化'\n};\nreturn [{\n  json: {\n    candidates: [{\n      content: { parts: [{ text: JSON.stringify(post) }] }\n    }]\n  }\n}];"
+          "jsCode": "// MOCK MODE - Wing style caption\nconst tt = $('驗證請求').first().json.topic_title || '一人公司 AI 自動化';\nconst topicId = $('驗證請求').first().json.topic_id || '';\n// Shorten topic title for use in heading\nconst topicShort = tt.replace(/^【測試】/, '').slice(0, 20);\nconst caption = \"【 {topic_short}？你可能搞錯重點了 】​\\n​\\nAlex 是一位接案設計師，每次聽到 AI 自動化，第一個反應都是：「這種東西，是大公司在用的吧？」​\\n​\\n（嗯，其實不是。）​\\n​\\n-​\\n​\\n▋ 大多數一人公司沒有導入 AI 的真正原因​\\n​\\n不是不想用。是不知道從哪裡開始。​\\n​\\n不是你不夠努力，而是沒有人告訴你：哪些事情用 AI 處理最有效、哪些事情你才是不可取代的那個。​\\n​\\n當你把時間花在每封重複的報價信、每次格式差不多的提案簡報，你其實是在用最貴的資源（你的時間）做最便宜的工作。​\\n​\\n-​\\n​\\n▋ 三件現在就可以自動化的事​\\n​\\n．客戶詢問回覆：AI 草稿 + 你的最後確認，省下每次 20 分鐘​\\n．報價單生成：填入變數，2 分鐘出一份專業文件​\\n．社群貼文：主題給 AI，你來潤稿，一週內容半天搞定​\\n​\\n-​\\n​\\n▋ 一年後，你會是哪一種人？​\\n​\\n一種：每天還是重複同樣的雜事，時間不夠用，接不了更多客戶。​\\n另一種：讓 AI 處理重複的，你專注在真正有價值的事，收入翻倍但工時沒有增加。​\\n​\\n你現在做的每個選擇，都在決定你是哪一種。​\\n​\\n-​\\n​\\n如果你也想開始但不知道從哪裡下手，我可以幫你拆解。​\\n💬 私訊「自動化」，告訴我你現在最花時間的一件事​\\n​\\n#一人公司 #AI自動化 #數位顧問 #自由工作者\".replace('{topic_short}', topicShort);\nconst posts = [{\n  topic_id: topicId,\n  platform: 'both',\n  caption: caption,\n  image_prompt: 'Minimalist digital illustration, solo entrepreneur working with AI assistant, clean modern style, blue #2A4189 and golden orange #C67E13 accents, Taiwanese professional aesthetic, no text overlay',\n}];\nreturn [{ json: { candidates: [{ content: { parts: [{ text: JSON.stringify(posts) }] } }] } }];"
         },
         "id": "a3000001-0000-0000-0000-00000000mck",
         "name": "假 貼文回應（測試用）",
@@ -2425,18 +2425,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-06-02T05:38:13.439Z",
-        "id": 578,
+        "createdAt": "2026-06-02T19:04:13.733Z",
+        "id": 582,
         "workflowId": "1eM3agOn7NZepRaH",
-        "versionId": "6a5d2a07-bb2c-4e3d-9d2b-018045780a79",
+        "versionId": "d7c18191-ab57-4313-b199-d6eeef01f45d",
         "event": "deactivated",
         "userId": "962dcbdc-e30f-4177-8665-3119ccc1ea1f"
       },
       {
-        "createdAt": "2026-06-02T05:38:13.475Z",
-        "id": 579,
+        "createdAt": "2026-06-02T19:04:13.778Z",
+        "id": 583,
         "workflowId": "1eM3agOn7NZepRaH",
-        "versionId": "6a5d2a07-bb2c-4e3d-9d2b-018045780a79",
+        "versionId": "d7c18191-ab57-4313-b199-d6eeef01f45d",
         "event": "activated",
         "userId": "962dcbdc-e30f-4177-8665-3119ccc1ea1f"
       }
