@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-02T05:23:37.058Z",
+  "updatedAt": "2026-06-02T05:38:12.491Z",
   "createdAt": "2026-06-01T08:01:57.641Z",
   "id": "htT0ohoqmevDqXcq",
   "name": "主題探索",
@@ -643,6 +643,50 @@
         2440,
         200
       ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "mock-check",
+              "leftValue": "={{ $env.MOCK_GEMINI }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "a2000001-0000-0000-0000-00000000mif",
+      "name": "是否 MOCK_GEMINI？",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// MOCK MODE：回傳假 AI 結果，模擬 Gemini 回應格式\nconst MOCK_TOPICS = [{\"topic_title\": \"【測試】2026 一人公司 AI 自動化必備工具清單\", \"source_url\": \"https://example.com/mock/tools\", \"relevance_score\": 98, \"brand_relevance\": \"直接命中品牌目標受眾「想用 AI 自動化的個人創業者」核心需求\", \"suggested_angles\": \"依預算分級的工具推薦、個人實測心得、新手避雷指南\", \"content_type\": \"工具評測\"}, {\"topic_title\": \"【測試】從零開始：個人創業者的 AI 自動化流程拆解\", \"source_url\": \"https://example.com/mock/workflow\", \"relevance_score\": 96, \"brand_relevance\": \"新手友善內容，可擴大潛在受眾\", \"suggested_angles\": \"5 步驟流程圖、真實案例追蹤、常見卡關點\", \"content_type\": \"教學\"}, {\"topic_title\": \"【測試】一人公司年營收破千萬：他靠這 3 個 AI 自動化做到\", \"source_url\": \"https://example.com/mock/case\", \"relevance_score\": 94, \"brand_relevance\": \"成功案例最容易引發共鳴與分享\", \"suggested_angles\": \"數字背後的決策、可複製的 SOP、心態調整\", \"content_type\": \"案例分享\"}, {\"topic_title\": \"【測試】別再迷信『AI 取代人類』— 一人公司真正該追的是什麼\", \"source_url\": \"https://example.com/mock/opinion\", \"relevance_score\": 88, \"brand_relevance\": \"建立品牌獨立思考的權威感\", \"suggested_angles\": \"破除迷思、實務角度、價值觀闡述\", \"content_type\": \"觀點\"}, {\"topic_title\": \"【測試】2026 趨勢：個人品牌 × AI Agent 新商業模式\", \"source_url\": \"https://example.com/mock/trend\", \"relevance_score\": 85, \"brand_relevance\": \"前瞻內容能塑造領導者形象\", \"suggested_angles\": \"市場數據、潛在機會、實戰準備\", \"content_type\": \"趨勢\"}, {\"topic_title\": \"【測試】Notion + AI 一人公司營運系統實戰\", \"source_url\": \"https://example.com/mock/notion\", \"relevance_score\": 82, \"brand_relevance\": \"Notion 是受眾常用工具，搭配 AI 是熱門組合\", \"suggested_angles\": \"模板分享、自動化範例、效率對比\", \"content_type\": \"教學\"}, {\"topic_title\": \"【測試】我用 AI 把 1 個人運作成 5 人團隊，每月省 18 小時\", \"source_url\": \"https://example.com/mock/efficiency\", \"relevance_score\": 80, \"brand_relevance\": \"省時數據具體可驗證，易引發轉發\", \"suggested_angles\": \"週流程對照、工具堆疊、心境改變\", \"content_type\": \"案例分享\"}];\nreturn [{\n  json: {\n    candidates: [{\n      content: { parts: [{ text: JSON.stringify(MOCK_TOPICS) }] }\n    }]\n  }\n}];"
+      },
+      "id": "a2000001-0000-0000-0000-00000000mck",
+      "name": "假 AI 結果（測試用）",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1900,
+        200
+      ]
     }
   ],
   "connections": {
@@ -716,7 +760,7 @@
       "main": [
         [
           {
-            "node": "AI 評估相關性",
+            "node": "是否 MOCK_GEMINI？",
             "type": "main",
             "index": 0
           }
@@ -777,6 +821,35 @@
           }
         ]
       ]
+    },
+    "是否 MOCK_GEMINI？": {
+      "main": [
+        [
+          {
+            "node": "假 AI 結果（測試用）",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI 評估相關性",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "假 AI 結果（測試用）": {
+      "main": [
+        [
+          {
+            "node": "解析 AI 結果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -786,9 +859,9 @@
   "staticData": null,
   "meta": null,
   "pinData": {},
-  "versionId": "302a8727-48d3-4583-ada8-44677bb75d7d",
-  "activeVersionId": "302a8727-48d3-4583-ada8-44677bb75d7d",
-  "versionCounter": 46,
+  "versionId": "2932595d-0aac-4ce0-a89c-d1ccb5af7b5c",
+  "activeVersionId": "2932595d-0aac-4ce0-a89c-d1ccb5af7b5c",
+  "versionCounter": 47,
   "triggerCount": 1,
   "shared": [
     {
@@ -811,9 +884,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-06-02T05:23:37.061Z",
-    "createdAt": "2026-06-02T05:23:37.061Z",
-    "versionId": "302a8727-48d3-4583-ada8-44677bb75d7d",
+    "updatedAt": "2026-06-02T05:38:12.494Z",
+    "createdAt": "2026-06-02T05:38:12.494Z",
+    "versionId": "2932595d-0aac-4ce0-a89c-d1ccb5af7b5c",
     "workflowId": "htT0ohoqmevDqXcq",
     "nodes": [
       {
@@ -1452,6 +1525,50 @@
           2440,
           200
         ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "combinator": "and",
+            "conditions": [
+              {
+                "id": "mock-check",
+                "leftValue": "={{ $env.MOCK_GEMINI }}",
+                "rightValue": "true",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        },
+        "id": "a2000001-0000-0000-0000-00000000mif",
+        "name": "是否 MOCK_GEMINI？",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1700,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// MOCK MODE：回傳假 AI 結果，模擬 Gemini 回應格式\nconst MOCK_TOPICS = [{\"topic_title\": \"【測試】2026 一人公司 AI 自動化必備工具清單\", \"source_url\": \"https://example.com/mock/tools\", \"relevance_score\": 98, \"brand_relevance\": \"直接命中品牌目標受眾「想用 AI 自動化的個人創業者」核心需求\", \"suggested_angles\": \"依預算分級的工具推薦、個人實測心得、新手避雷指南\", \"content_type\": \"工具評測\"}, {\"topic_title\": \"【測試】從零開始：個人創業者的 AI 自動化流程拆解\", \"source_url\": \"https://example.com/mock/workflow\", \"relevance_score\": 96, \"brand_relevance\": \"新手友善內容，可擴大潛在受眾\", \"suggested_angles\": \"5 步驟流程圖、真實案例追蹤、常見卡關點\", \"content_type\": \"教學\"}, {\"topic_title\": \"【測試】一人公司年營收破千萬：他靠這 3 個 AI 自動化做到\", \"source_url\": \"https://example.com/mock/case\", \"relevance_score\": 94, \"brand_relevance\": \"成功案例最容易引發共鳴與分享\", \"suggested_angles\": \"數字背後的決策、可複製的 SOP、心態調整\", \"content_type\": \"案例分享\"}, {\"topic_title\": \"【測試】別再迷信『AI 取代人類』— 一人公司真正該追的是什麼\", \"source_url\": \"https://example.com/mock/opinion\", \"relevance_score\": 88, \"brand_relevance\": \"建立品牌獨立思考的權威感\", \"suggested_angles\": \"破除迷思、實務角度、價值觀闡述\", \"content_type\": \"觀點\"}, {\"topic_title\": \"【測試】2026 趨勢：個人品牌 × AI Agent 新商業模式\", \"source_url\": \"https://example.com/mock/trend\", \"relevance_score\": 85, \"brand_relevance\": \"前瞻內容能塑造領導者形象\", \"suggested_angles\": \"市場數據、潛在機會、實戰準備\", \"content_type\": \"趨勢\"}, {\"topic_title\": \"【測試】Notion + AI 一人公司營運系統實戰\", \"source_url\": \"https://example.com/mock/notion\", \"relevance_score\": 82, \"brand_relevance\": \"Notion 是受眾常用工具，搭配 AI 是熱門組合\", \"suggested_angles\": \"模板分享、自動化範例、效率對比\", \"content_type\": \"教學\"}, {\"topic_title\": \"【測試】我用 AI 把 1 個人運作成 5 人團隊，每月省 18 小時\", \"source_url\": \"https://example.com/mock/efficiency\", \"relevance_score\": 80, \"brand_relevance\": \"省時數據具體可驗證，易引發轉發\", \"suggested_angles\": \"週流程對照、工具堆疊、心境改變\", \"content_type\": \"案例分享\"}];\nreturn [{\n  json: {\n    candidates: [{\n      content: { parts: [{ text: JSON.stringify(MOCK_TOPICS) }] }\n    }]\n  }\n}];"
+        },
+        "id": "a2000001-0000-0000-0000-00000000mck",
+        "name": "假 AI 結果（測試用）",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1900,
+          200
+        ]
       }
     ],
     "connections": {
@@ -1525,7 +1642,7 @@
         "main": [
           [
             {
-              "node": "AI 評估相關性",
+              "node": "是否 MOCK_GEMINI？",
               "type": "main",
               "index": 0
             }
@@ -1586,6 +1703,35 @@
             }
           ]
         ]
+      },
+      "是否 MOCK_GEMINI？": {
+        "main": [
+          [
+            {
+              "node": "假 AI 結果（測試用）",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "AI 評估相關性",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "假 AI 結果（測試用）": {
+        "main": [
+          [
+            {
+              "node": "解析 AI 結果",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "authors": "Wing Xiang",
@@ -1594,18 +1740,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-06-02T05:23:37.186Z",
-        "id": 572,
+        "createdAt": "2026-06-02T05:38:12.606Z",
+        "id": 576,
         "workflowId": "htT0ohoqmevDqXcq",
-        "versionId": "302a8727-48d3-4583-ada8-44677bb75d7d",
+        "versionId": "2932595d-0aac-4ce0-a89c-d1ccb5af7b5c",
         "event": "deactivated",
         "userId": "962dcbdc-e30f-4177-8665-3119ccc1ea1f"
       },
       {
-        "createdAt": "2026-06-02T05:23:37.224Z",
-        "id": 573,
+        "createdAt": "2026-06-02T05:38:12.648Z",
+        "id": 577,
         "workflowId": "htT0ohoqmevDqXcq",
-        "versionId": "302a8727-48d3-4583-ada8-44677bb75d7d",
+        "versionId": "2932595d-0aac-4ce0-a89c-d1ccb5af7b5c",
         "event": "activated",
         "userId": "962dcbdc-e30f-4177-8665-3119ccc1ea1f"
       }
