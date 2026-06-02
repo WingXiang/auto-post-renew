@@ -1,5 +1,11 @@
 {
+  "updatedAt": "2026-06-02T03:42:54.728Z",
+  "createdAt": "2026-06-01T08:01:57.641Z",
+  "id": "htT0ohoqmevDqXcq",
   "name": "主題探索",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
@@ -20,7 +26,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) {\n  throw new Error('Unauthorized');\n}\nconst { brand_id } = $input.first().json.body;\nif (!brand_id) throw new Error('Missing brand_id');\n\nreturn [{\n  json: {\n    brand_id,\n    log_id: 'td-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+        "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) throw new Error('Unauthorized');\nconst body = $input.first().json.body;\nif (!body.brand_id) throw new Error('Missing brand_id');\nreturn [{\n  json: {\n    brand_id: body.brand_id,\n    search_keyword: body.search_keyword || '',\n    content_type: body.content_type || '',\n    target_reader: body.target_reader || '',\n    recency_days: body.recency_days || '',\n    log_id: 'td-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
       },
       "id": "a2000001-0000-0000-0000-000000000002",
       "name": "驗證請求",
@@ -54,7 +60,9 @@
             "status": "running",
             "message": "搜尋熱門主題中...",
             "started_at": "={{ $json.started_at }}",
-            "finished_at": ""
+            "finished_at": "",
+            "subject": "={{ '搜尋主題：' + ($('驗證請求').first().json.search_keyword || '品牌主題') }}",
+            "progress": "0/7"
           },
           "schema": [
             {
@@ -114,6 +122,24 @@
             {
               "id": "finished_at",
               "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "progress",
+              "displayName": "progress",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -187,7 +213,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const brand = $input.first().json;\nconst theme = brand.theme || '社群行銷';\nconst audience = brand.target_audience || '一般消費者';\n\n// 組合搜尋關鍵字\nconst queries = [\n  `${theme} 趨勢 ${new Date().getFullYear()}`,\n  `${theme} ${audience} 熱門話題`,\n  `${brand.brand_name || ''} 產業 最新消息`\n].filter(Boolean);\n\nreturn queries.map(q => ({ json: { query: q, brand } }));"
+        "jsCode": "const brand = $input.first().json;\nconst req = $('驗證請求').first().json;\nconst keyword = (req.search_keyword || '').trim();\nconst theme = brand.theme || '社群行銷';\nconst audience = brand.target_audience || '一般消費者';\nconst year = new Date().getFullYear();\nlet queries;\nif (keyword) {\n  // 使用者明確指定關鍵字：擴成 3 個變體\n  queries = [\n    keyword,\n    `${keyword} ${year}`,\n    `${keyword} ${audience}`\n  ];\n} else {\n  queries = [\n    `${theme} 趨勢 ${year}`,\n    `${theme} ${audience} 熱門話題`,\n    `${brand.brand_name || ''} 產業 最新消息`\n  ].filter(Boolean);\n}\n// recency → tbs\nconst days = parseInt(req.recency_days, 10);\nlet tbs = '';\nif (days === 7) tbs = 'qdr:w';\nelse if (days === 30) tbs = 'qdr:m';\nelse if (days === 90) tbs = 'qdr:m3';\nreturn queries.map(q => ({ json: { query: q, brand, tbs } }));"
       },
       "id": "a2000001-0000-0000-0000-000000000005",
       "name": "組合搜尋關鍵字",
@@ -217,7 +243,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ q: $json.query, gl: 'tw', hl: 'zh-TW', num: 10 }) }}",
+        "jsonBody": "={{ JSON.stringify({ q: $json.query, gl: 'tw', hl: 'zh-TW', num: 10, ...($json.tbs ? { tbs: $json.tbs } : {}) }) }}",
         "options": {}
       },
       "id": "a2000001-0000-0000-0000-000000000006",
@@ -257,7 +283,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  systemInstruction: { parts: [{ text: '你是社群媒體內容策略專家。根據品牌資訊和搜尋結果，評估每個主題的相關性。回傳 JSON 陣列，每個項目包含：topic_title（繁體中文標題）、source_url、relevance_score（0-100 整數）。只保留 relevance_score >= 60 的主題。直接回傳 JSON 陣列，不要用 markdown 包裹。' }] },\n  contents: [{ role: 'user', parts: [{ text: `品牌資訊：\\n品牌名稱：${$('讀取品牌資料').first().json.brand_name || ''}\\n主題：${$('讀取品牌資料').first().json.theme || ''}\\n目標受眾：${$('讀取品牌資料').first().json.target_audience || ''}\\n\\n搜尋結果：\\n${JSON.stringify($json.results.map(r => ({ title: r.title, url: r.link, snippet: r.snippet })))}` }] }],\n  generationConfig: { temperature: 0.3 }\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  systemInstruction: { parts: [{ text: \"你是社群媒體內容策略專家。根據品牌資訊與搜尋結果，挑出最多 7 個與品牌最相關的主題，依 relevance_score 由高到低排序。回傳純 JSON 陣列（不要 markdown 包裹），每個項目包含：topic_title（繁體中文標題，吸睛短句）、source_url、relevance_score（0-100 整數）、brand_relevance（一句話說明此主題與此品牌為何相關）、suggested_angles（建議的 3 種撰寫角度，用 \\\"、\\\" 分隔）、content_type（從這些選一個：教學/案例分享/觀點/工具評測/趨勢）。只回傳 relevance_score >= 50 的主題。\" }] },\n  contents: [{ role: 'user', parts: [{ text: `品牌資訊：\\n品牌名稱：${$('讀取品牌資料').first().json.brand_name || ''}\\n主題：${$('讀取品牌資料').first().json.theme || ''}\\n目標受眾：${$('讀取品牌資料').first().json.target_audience || ''}\\n\\n使用者偏好（若有）：\\n關鍵字：${$('驗證請求').first().json.search_keyword || '無'}\\n內容類型：${$('驗證請求').first().json.content_type || '不限'}\\n目標讀者：${$('驗證請求').first().json.target_reader || '不限'}\\n\\n搜尋結果：\\n${JSON.stringify($json.results.map(r => ({ title: r.title, url: r.link, snippet: r.snippet })))}` }] }],\n  generationConfig: { temperature: 0.3 }\n}) }}",
         "options": {
           "retry": {
             "maxTries": 3
@@ -278,7 +304,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const brandId = $('驗證請求').first().json.brand_id;\nconst response = $input.first().json;\nconst content = response.candidates?.[0]?.content?.parts?.[0]?.text || '[]';\n\nlet topics;\ntry {\n  // 嘗試解析 JSON（可能被 markdown 包裹）\n  const cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  topics = JSON.parse(cleaned);\n} catch (e) {\n  topics = [];\n}\n\nconst now = new Date().toISOString();\n\nreturn topics.map((t, i) => ({\n  json: {\n    topic_id: `topic-${Date.now()}-${i}`,\n    brand_id: brandId,\n    topic_title: t.topic_title || t.title || '',\n    source_url: t.source_url || t.url || '',\n    relevance_score: String(t.relevance_score || 0),\n    status: 'pending',\n    created_at: now\n  }\n}));"
+        "jsCode": "const req = $('驗證請求').first().json;\nconst brandId = req.brand_id;\nconst response = $input.first().json;\nconst content = response.candidates?.[0]?.content?.parts?.[0]?.text || '[]';\nlet topics;\ntry {\n  const cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  topics = JSON.parse(cleaned);\n} catch (e) {\n  topics = [];\n}\n// 最多 7 個\ntopics = topics.slice(0, 7);\nconst now = new Date().toISOString();\nreturn topics.map((t, i) => ({\n  json: {\n    topic_id: `topic-${Date.now()}-${i}`,\n    brand_id: brandId,\n    topic_title: t.topic_title || t.title || '',\n    source_url: t.source_url || t.url || '',\n    relevance_score: String(t.relevance_score || 0),\n    status: 'pending',\n    brand_relevance: t.brand_relevance || '',\n    suggested_angles: t.suggested_angles || '',\n    content_type: t.content_type || req.content_type || '',\n    target_reader: req.target_reader || '',\n    search_keyword: req.search_keyword || '',\n    archived_at: '',\n    created_at: now\n  }\n}));"
       },
       "id": "a2000001-0000-0000-0000-000000000009",
       "name": "解析 AI 結果",
@@ -312,7 +338,13 @@
             "source_url": "={{ $json.source_url }}",
             "relevance_score": "={{ $json.relevance_score }}",
             "status": "={{ $json.status }}",
-            "created_at": "={{ $json.created_at }}"
+            "created_at": "={{ $json.created_at }}",
+            "brand_relevance": "={{ $json.brand_relevance }}",
+            "suggested_angles": "={{ $json.suggested_angles }}",
+            "content_type": "={{ $json.content_type }}",
+            "target_reader": "={{ $json.target_reader }}",
+            "search_keyword": "={{ $json.search_keyword }}",
+            "archived_at": "={{ $json.archived_at }}"
           },
           "schema": [
             {
@@ -377,6 +409,60 @@
               "display": true,
               "type": "string",
               "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_relevance",
+              "displayName": "brand_relevance",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "suggested_angles",
+              "displayName": "suggested_angles",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "content_type",
+              "displayName": "content_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "target_reader",
+              "displayName": "target_reader",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "search_keyword",
+              "displayName": "search_keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "archived_at",
+              "displayName": "archived_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
             }
           ],
           "attemptToConvertTypes": false,
@@ -419,8 +505,10 @@
           "value": {
             "log_id": "={{ $('驗證請求').first().json.log_id }}",
             "status": "success",
-            "message": "={{ '發現 ' + $input.all().length + ' 個相關主題' }}",
-            "finished_at": "={{ $now.toISO() }}"
+            "message": "={{ '搜尋主題：' + ($('驗證請求').first().json.search_keyword || $('讀取品牌資料').first().json.theme || '品牌主題') + '，找到 ' + $('解析 AI 結果').all().length + ' 個，已自動產生 ' + $('解析 AI 結果').all().length + ' 篇文案' }}",
+            "finished_at": "={{ $now.toISO() }}",
+            "subject": "={{ '搜尋主題：' + ($('驗證請求').first().json.search_keyword || $('讀取品牌資料').first().json.theme || '品牌主題') }}",
+            "progress": "={{ $('解析 AI 結果').all().length + '/7' }}"
           },
           "schema": [
             {
@@ -485,6 +573,24 @@
               "display": true,
               "type": "string",
               "canBeUsedToMatch": true
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "progress",
+              "displayName": "progress",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
             }
           ],
           "matchingColumns": [
@@ -523,6 +629,19 @@
       "position": [
         2660,
         300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fan-out: 對每個新主題觸發 content-generation webhook（fire-and-forget）\nconst apiKey = $env.N8N_API_KEY;\nconst brandId = $('驗證請求').first().json.brand_id;\nconst items = $input.all();\nconst promises = items.map(item => {\n  const topic_id = item.json.topic_id;\n  const topic_title = item.json.topic_title;\n  return this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://wing.zeabur.app/webhook/content-generation',\n    body: { api_key: apiKey, brand_id: brandId, topic_id, topic_title },\n    json: true,\n    timeout: 5000\n  }).catch(e => ({ error: e.message }));\n});\n// 不等回應，但 helpers 是 async；至少 fire request\nawait Promise.allSettled(promises);\nreturn [{ json: { topics_dispatched: items.length } }];"
+      },
+      "id": "a2000001-0000-0000-0000-0000000000a2",
+      "name": "批次觸發產文",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        200
       ]
     }
   ],
@@ -630,7 +749,7 @@
       "main": [
         [
           {
-            "node": "記錄完成",
+            "node": "批次觸發產文",
             "type": "main",
             "index": 0
           }
@@ -647,19 +766,849 @@
           }
         ]
       ]
+    },
+    "批次觸發產文": {
+      "main": [
+        [
+          {
+            "node": "記錄完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
+  "staticData": null,
+  "meta": null,
   "pinData": {},
-  "meta": {
-    "templateCredsSetupCompleted": false,
-    "instanceId": ""
-  },
-  "tags": [
+  "versionId": "22142786-3142-4fda-9855-809e10ecd692",
+  "activeVersionId": "22142786-3142-4fda-9855-809e10ecd692",
+  "versionCounter": 43,
+  "triggerCount": 1,
+  "shared": [
     {
-      "name": "auto-post-renew"
+      "updatedAt": "2026-06-01T08:01:57.641Z",
+      "createdAt": "2026-06-01T08:01:57.641Z",
+      "role": "workflow:owner",
+      "workflowId": "htT0ohoqmevDqXcq",
+      "projectId": "GQbunSM7VTXAKOZK",
+      "project": {
+        "updatedAt": "2026-04-29T13:28:09.107Z",
+        "createdAt": "2026-04-29T13:22:09.417Z",
+        "id": "GQbunSM7VTXAKOZK",
+        "name": "Wing Xiang <zxc1425638@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "962dcbdc-e30f-4177-8665-3119ccc1ea1f"
+      }
     }
-  ]
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-06-02T03:42:54.731Z",
+    "createdAt": "2026-06-02T03:42:54.731Z",
+    "versionId": "22142786-3142-4fda-9855-809e10ecd692",
+    "workflowId": "htT0ohoqmevDqXcq",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "topic-discovery",
+          "options": {},
+          "responseMode": "responseNode"
+        },
+        "id": "a2000001-0000-0000-0000-000000000001",
+        "name": "Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          240,
+          300
+        ],
+        "webhookId": "topic-discovery"
+      },
+      {
+        "parameters": {
+          "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) throw new Error('Unauthorized');\nconst body = $input.first().json.body;\nif (!body.brand_id) throw new Error('Missing brand_id');\nreturn [{\n  json: {\n    brand_id: body.brand_id,\n    search_keyword: body.search_keyword || '',\n    content_type: body.content_type || '',\n    target_reader: body.target_reader || '',\n    recency_days: body.recency_days || '',\n    log_id: 'td-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+        },
+        "id": "a2000001-0000-0000-0000-000000000002",
+        "name": "驗證請求",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          460,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "appendOrUpdate",
+          "documentId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+          },
+          "sheetName": {
+            "__rl": true,
+            "mode": "list",
+            "value": "593324924",
+            "cachedResultName": "pipeline_logs"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "log_id": "={{ $json.log_id }}",
+              "brand_id": "={{ $json.brand_id }}",
+              "workflow_name": "topic-discovery",
+              "status": "running",
+              "message": "搜尋熱門主題中...",
+              "started_at": "={{ $json.started_at }}",
+              "finished_at": "",
+              "subject": "={{ '搜尋主題：' + ($('驗證請求').first().json.search_keyword || '品牌主題') }}",
+              "progress": "0/7"
+            },
+            "schema": [
+              {
+                "id": "log_id",
+                "displayName": "log_id",
+                "required": false,
+                "defaultMatch": true,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "brand_id",
+                "displayName": "brand_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "workflow_name",
+                "displayName": "workflow_name",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "status",
+                "displayName": "status",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "message",
+                "displayName": "message",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "started_at",
+                "displayName": "started_at",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "finished_at",
+                "displayName": "finished_at",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "subject",
+                "displayName": "subject",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "progress",
+                "displayName": "progress",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              }
+            ],
+            "matchingColumns": [
+              "log_id"
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {},
+          "authentication": "serviceAccount"
+        },
+        "id": "a2000001-0000-0000-0000-000000000003",
+        "name": "記錄開始",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          680,
+          300
+        ],
+        "credentials": {
+          "googleApi": {
+            "id": "M653HfRFnL0gLZej",
+            "name": "Google Sheets SA"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "read",
+          "documentId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+          },
+          "sheetName": {
+            "__rl": true,
+            "mode": "list",
+            "value": "1265514779",
+            "cachedResultName": "brands"
+          },
+          "filtersUI": {
+            "values": [
+              {
+                "lookupColumn": "brand_id",
+                "lookupValue": "={{ $('驗證請求').first().json.brand_id }}"
+              }
+            ]
+          },
+          "options": {},
+          "authentication": "serviceAccount"
+        },
+        "id": "a2000001-0000-0000-0000-000000000004",
+        "name": "讀取品牌資料",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          900,
+          300
+        ],
+        "credentials": {
+          "googleApi": {
+            "id": "M653HfRFnL0gLZej",
+            "name": "Google Sheets SA"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const brand = $input.first().json;\nconst req = $('驗證請求').first().json;\nconst keyword = (req.search_keyword || '').trim();\nconst theme = brand.theme || '社群行銷';\nconst audience = brand.target_audience || '一般消費者';\nconst year = new Date().getFullYear();\nlet queries;\nif (keyword) {\n  // 使用者明確指定關鍵字：擴成 3 個變體\n  queries = [\n    keyword,\n    `${keyword} ${year}`,\n    `${keyword} ${audience}`\n  ];\n} else {\n  queries = [\n    `${theme} 趨勢 ${year}`,\n    `${theme} ${audience} 熱門話題`,\n    `${brand.brand_name || ''} 產業 最新消息`\n  ].filter(Boolean);\n}\n// recency → tbs\nconst days = parseInt(req.recency_days, 10);\nlet tbs = '';\nif (days === 7) tbs = 'qdr:w';\nelse if (days === 30) tbs = 'qdr:m';\nelse if (days === 90) tbs = 'qdr:m3';\nreturn queries.map(q => ({ json: { query: q, brand, tbs } }));"
+        },
+        "id": "a2000001-0000-0000-0000-000000000005",
+        "name": "組合搜尋關鍵字",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://google.serper.dev/search",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-API-KEY",
+                "value": "={{ $env.SERPER_API_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ q: $json.query, gl: 'tw', hl: 'zh-TW', num: 10, ...($json.tbs ? { tbs: $json.tbs } : {}) }) }}",
+          "options": {}
+        },
+        "id": "a2000001-0000-0000-0000-000000000006",
+        "name": "Serper 搜尋",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1340,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// 彙整所有搜尋結果\nconst allResults = [];\n\nfor (const item of $input.all()) {\n  const organic = item.json.organic || [];\n  for (const result of organic) {\n    allResults.push({\n      title: result.title,\n      link: result.link,\n      snippet: result.snippet || ''\n    });\n  }\n}\n\n// 去重（依 link）\nconst seen = new Set();\nconst unique = allResults.filter(r => {\n  if (seen.has(r.link)) return false;\n  seen.add(r.link);\n  return true;\n}).slice(0, 20);\n\nreturn [{\n  json: {\n    results: unique,\n    brand_id: $('驗證請求').first().json.brand_id,\n    count: unique.length\n  }\n}];"
+        },
+        "id": "a2000001-0000-0000-0000-000000000007",
+        "name": "彙整搜尋結果",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1560,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{ $env.GEMINI_MODEL || 'gemini-2.0-flash' }}:generateContent?key={{ $env.GEMINI_API_KEY }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({\n  systemInstruction: { parts: [{ text: \"你是社群媒體內容策略專家。根據品牌資訊與搜尋結果，挑出最多 7 個與品牌最相關的主題，依 relevance_score 由高到低排序。回傳純 JSON 陣列（不要 markdown 包裹），每個項目包含：topic_title（繁體中文標題，吸睛短句）、source_url、relevance_score（0-100 整數）、brand_relevance（一句話說明此主題與此品牌為何相關）、suggested_angles（建議的 3 種撰寫角度，用 \\\"、\\\" 分隔）、content_type（從這些選一個：教學/案例分享/觀點/工具評測/趨勢）。只回傳 relevance_score >= 50 的主題。\" }] },\n  contents: [{ role: 'user', parts: [{ text: `品牌資訊：\\n品牌名稱：${$('讀取品牌資料').first().json.brand_name || ''}\\n主題：${$('讀取品牌資料').first().json.theme || ''}\\n目標受眾：${$('讀取品牌資料').first().json.target_audience || ''}\\n\\n使用者偏好（若有）：\\n關鍵字：${$('驗證請求').first().json.search_keyword || '無'}\\n內容類型：${$('驗證請求').first().json.content_type || '不限'}\\n目標讀者：${$('驗證請求').first().json.target_reader || '不限'}\\n\\n搜尋結果：\\n${JSON.stringify($json.results.map(r => ({ title: r.title, url: r.link, snippet: r.snippet })))}` }] }],\n  generationConfig: { temperature: 0.3 }\n}) }}",
+          "options": {
+            "retry": {
+              "maxTries": 3
+            }
+          }
+        },
+        "id": "a2000001-0000-0000-0000-000000000008",
+        "name": "AI 評估相關性",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1780,
+          300
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 2000
+      },
+      {
+        "parameters": {
+          "jsCode": "const req = $('驗證請求').first().json;\nconst brandId = req.brand_id;\nconst response = $input.first().json;\nconst content = response.candidates?.[0]?.content?.parts?.[0]?.text || '[]';\nlet topics;\ntry {\n  const cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  topics = JSON.parse(cleaned);\n} catch (e) {\n  topics = [];\n}\n// 最多 7 個\ntopics = topics.slice(0, 7);\nconst now = new Date().toISOString();\nreturn topics.map((t, i) => ({\n  json: {\n    topic_id: `topic-${Date.now()}-${i}`,\n    brand_id: brandId,\n    topic_title: t.topic_title || t.title || '',\n    source_url: t.source_url || t.url || '',\n    relevance_score: String(t.relevance_score || 0),\n    status: 'pending',\n    brand_relevance: t.brand_relevance || '',\n    suggested_angles: t.suggested_angles || '',\n    content_type: t.content_type || req.content_type || '',\n    target_reader: req.target_reader || '',\n    search_keyword: req.search_keyword || '',\n    archived_at: '',\n    created_at: now\n  }\n}));"
+        },
+        "id": "a2000001-0000-0000-0000-000000000009",
+        "name": "解析 AI 結果",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2000,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+          },
+          "sheetName": {
+            "__rl": true,
+            "mode": "list",
+            "value": "1432193145",
+            "cachedResultName": "topics"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "topic_id": "={{ $json.topic_id }}",
+              "brand_id": "={{ $json.brand_id }}",
+              "topic_title": "={{ $json.topic_title }}",
+              "source_url": "={{ $json.source_url }}",
+              "relevance_score": "={{ $json.relevance_score }}",
+              "status": "={{ $json.status }}",
+              "created_at": "={{ $json.created_at }}",
+              "brand_relevance": "={{ $json.brand_relevance }}",
+              "suggested_angles": "={{ $json.suggested_angles }}",
+              "content_type": "={{ $json.content_type }}",
+              "target_reader": "={{ $json.target_reader }}",
+              "search_keyword": "={{ $json.search_keyword }}",
+              "archived_at": "={{ $json.archived_at }}"
+            },
+            "schema": [
+              {
+                "id": "topic_id",
+                "displayName": "topic_id",
+                "required": false,
+                "defaultMatch": true,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "brand_id",
+                "displayName": "brand_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "topic_title",
+                "displayName": "topic_title",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "source_url",
+                "displayName": "source_url",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "relevance_score",
+                "displayName": "relevance_score",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "status",
+                "displayName": "status",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "created_at",
+                "displayName": "created_at",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "brand_relevance",
+                "displayName": "brand_relevance",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "suggested_angles",
+                "displayName": "suggested_angles",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "content_type",
+                "displayName": "content_type",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "target_reader",
+                "displayName": "target_reader",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "search_keyword",
+                "displayName": "search_keyword",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "archived_at",
+                "displayName": "archived_at",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {},
+          "authentication": "serviceAccount"
+        },
+        "id": "a2000001-0000-0000-0000-000000000010",
+        "name": "寫入主題",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          2220,
+          300
+        ],
+        "credentials": {
+          "googleApi": {
+            "id": "M653HfRFnL0gLZej",
+            "name": "Google Sheets SA"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "appendOrUpdate",
+          "documentId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+          },
+          "sheetName": {
+            "__rl": true,
+            "mode": "list",
+            "value": "593324924",
+            "cachedResultName": "pipeline_logs"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "log_id": "={{ $('驗證請求').first().json.log_id }}",
+              "status": "success",
+              "message": "={{ '搜尋主題：' + ($('驗證請求').first().json.search_keyword || $('讀取品牌資料').first().json.theme || '品牌主題') + '，找到 ' + $('解析 AI 結果').all().length + ' 個，已自動產生 ' + $('解析 AI 結果').all().length + ' 篇文案' }}",
+              "finished_at": "={{ $now.toISO() }}",
+              "subject": "={{ '搜尋主題：' + ($('驗證請求').first().json.search_keyword || $('讀取品牌資料').first().json.theme || '品牌主題') }}",
+              "progress": "={{ $('解析 AI 結果').all().length + '/7' }}"
+            },
+            "schema": [
+              {
+                "id": "log_id",
+                "displayName": "log_id",
+                "required": false,
+                "defaultMatch": true,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "brand_id",
+                "displayName": "brand_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "workflow_name",
+                "displayName": "workflow_name",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "status",
+                "displayName": "status",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "message",
+                "displayName": "message",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "started_at",
+                "displayName": "started_at",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "finished_at",
+                "displayName": "finished_at",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "subject",
+                "displayName": "subject",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "progress",
+                "displayName": "progress",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              }
+            ],
+            "matchingColumns": [
+              "log_id"
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {},
+          "authentication": "serviceAccount"
+        },
+        "id": "a2000001-0000-0000-0000-000000000011",
+        "name": "記錄完成",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [
+          2440,
+          300
+        ],
+        "credentials": {
+          "googleApi": {
+            "id": "M653HfRFnL0gLZej",
+            "name": "Google Sheets SA"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ success: true, data: { topics_found: $('解析 AI 結果').all().length } }) }}"
+        },
+        "id": "a2000001-0000-0000-0000-000000000012",
+        "name": "回應成功",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          2660,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Fan-out: 對每個新主題觸發 content-generation webhook（fire-and-forget）\nconst apiKey = $env.N8N_API_KEY;\nconst brandId = $('驗證請求').first().json.brand_id;\nconst items = $input.all();\nconst promises = items.map(item => {\n  const topic_id = item.json.topic_id;\n  const topic_title = item.json.topic_title;\n  return this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://wing.zeabur.app/webhook/content-generation',\n    body: { api_key: apiKey, brand_id: brandId, topic_id, topic_title },\n    json: true,\n    timeout: 5000\n  }).catch(e => ({ error: e.message }));\n});\n// 不等回應，但 helpers 是 async；至少 fire request\nawait Promise.allSettled(promises);\nreturn [{ json: { topics_dispatched: items.length } }];"
+        },
+        "id": "a2000001-0000-0000-0000-0000000000a2",
+        "name": "批次觸發產文",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2440,
+          200
+        ]
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "驗證請求",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "驗證請求": {
+        "main": [
+          [
+            {
+              "node": "記錄開始",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "記錄開始": {
+        "main": [
+          [
+            {
+              "node": "讀取品牌資料",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "讀取品牌資料": {
+        "main": [
+          [
+            {
+              "node": "組合搜尋關鍵字",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "組合搜尋關鍵字": {
+        "main": [
+          [
+            {
+              "node": "Serper 搜尋",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Serper 搜尋": {
+        "main": [
+          [
+            {
+              "node": "彙整搜尋結果",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "彙整搜尋結果": {
+        "main": [
+          [
+            {
+              "node": "AI 評估相關性",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI 評估相關性": {
+        "main": [
+          [
+            {
+              "node": "解析 AI 結果",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "解析 AI 結果": {
+        "main": [
+          [
+            {
+              "node": "寫入主題",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "寫入主題": {
+        "main": [
+          [
+            {
+              "node": "批次觸發產文",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "記錄完成": {
+        "main": [
+          [
+            {
+              "node": "回應成功",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "批次觸發產文": {
+        "main": [
+          [
+            {
+              "node": "記錄完成",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Wing Xiang",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-06-02T03:42:54.845Z",
+        "id": 560,
+        "workflowId": "htT0ohoqmevDqXcq",
+        "versionId": "22142786-3142-4fda-9855-809e10ecd692",
+        "event": "deactivated",
+        "userId": "962dcbdc-e30f-4177-8665-3119ccc1ea1f"
+      },
+      {
+        "createdAt": "2026-06-02T03:42:54.891Z",
+        "id": 561,
+        "workflowId": "htT0ohoqmevDqXcq",
+        "versionId": "22142786-3142-4fda-9855-809e10ecd692",
+        "event": "activated",
+        "userId": "962dcbdc-e30f-4177-8665-3119ccc1ea1f"
+      }
+    ]
+  }
 }

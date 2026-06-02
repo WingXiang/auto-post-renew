@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireBrandId } from "@/lib/auth";
 import { getRows } from "@/lib/google-sheets";
+import { redactError, redactSecrets } from "@/lib/redact";
 
 export async function POST() {
   try {
@@ -31,10 +32,10 @@ export async function POST() {
         if (r.ok && d.name) {
           result.fb_page_name = d.name;
         } else {
-          result.errors.push(`FB Page: ${d.error?.message || "未知錯誤"}`);
+          result.errors.push(`FB Page: ${redactSecrets(d.error?.message) || "未知錯誤"}`);
         }
       } catch (e) {
-        result.errors.push(`FB Page: ${e instanceof Error ? e.message : "網路錯誤"}`);
+        result.errors.push(`FB Page: ${redactError(e) || "網路錯誤"}`);
       }
     }
 
@@ -48,10 +49,10 @@ export async function POST() {
         if (r.ok && d.username) {
           result.ig_username = d.username;
         } else {
-          result.errors.push(`IG: ${d.error?.message || "未知錯誤"}`);
+          result.errors.push(`IG: ${redactSecrets(d.error?.message) || "未知錯誤"}`);
         }
       } catch (e) {
-        result.errors.push(`IG: ${e instanceof Error ? e.message : "網路錯誤"}`);
+        result.errors.push(`IG: ${redactError(e) || "網路錯誤"}`);
       }
     }
 
@@ -75,7 +76,7 @@ export async function POST() {
       return NextResponse.json({ error: "請先選擇品牌" }, { status: 400 });
     }
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "伺服器錯誤" },
+      { error: redactError(e) || "伺服器錯誤" },
       { status: 500 }
     );
   }

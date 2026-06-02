@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+import { redactError } from "@/lib/redact";
 
 // Auth via shared secret (called from n8n, not user)
 const N8N_API_KEY = process.env.N8N_API_KEY!;
+
+// 用 timing-safe 比較避免微弱的 timing oracle
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let r = 0;
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +23,7 @@ export async function POST(req: NextRequest) {
       content_type?: string;
     };
 
-    if (!api_key || api_key !== N8N_API_KEY) {
+    if (!api_key || !safeEqual(api_key, N8N_API_KEY)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (!base64) {
@@ -39,7 +48,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: blob.url, size: buffer.length });
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "上傳失敗" },
+      { error: redactError(e) || "上傳失敗" },
       { status: 500 }
     );
   }

@@ -8,8 +8,14 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  // TODO: 正式上線前移除此開發模式旁路
-  if (process.env.DEV_BYPASS_AUTH === "true") return;
+  // Dev-only bypass — 任何情況下都拒絕在 production 生效，
+  // 避免不小心把 DEV_BYPASS_AUTH=true 設進 Vercel production env 而開後門。
+  if (
+    process.env.DEV_BYPASS_AUTH === "true" &&
+    process.env.NODE_ENV !== "production"
+  ) {
+    return;
+  }
   if (!isPublicRoute(req)) {
     await auth.protect();
   }

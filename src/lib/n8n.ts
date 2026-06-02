@@ -1,3 +1,5 @@
+import { redactError, redactSecrets } from "./redact";
+
 const N8N_BASE_URL = process.env.N8N_BASE_URL!;
 const N8N_API_KEY = process.env.N8N_API_KEY!;
 
@@ -25,7 +27,12 @@ export async function triggerWorkflow(
 
     if (!res.ok) {
       const text = await res.text();
-      return { success: false, error: `n8n responded ${res.status}: ${text}` };
+      // n8n 偶爾會在錯誤回應裡 echo 整個 payload（含 api_key），
+      // 在送回 client 之前一律遮罩。
+      return {
+        success: false,
+        error: `n8n responded ${res.status}: ${redactSecrets(text)}`,
+      };
     }
 
     const data = await res.json().catch(() => null);
@@ -33,7 +40,7 @@ export async function triggerWorkflow(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : "Unknown error",
+      error: redactError(err) || "Unknown error",
     };
   }
 }

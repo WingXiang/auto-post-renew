@@ -50,6 +50,25 @@ td_wf.json
 e[0-9]*.json
 e.json
 exe.json
+ps*.json
+ps_wf*.json
+cg_wf*.json
+wf_td*.json
+
+# credential material (never commit)
+*.key
+*.pem
+*.p8
+*.pfx
+*.crt
+*.cer
+service-account*.json
+credentials*.json
+secrets*.json
+*-key.json
+*-secret.json
+*.token
+*.token.txt
 
 # claude session settings (personal config)
 .claude/settings.local.json

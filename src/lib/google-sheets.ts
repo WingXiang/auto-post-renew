@@ -192,6 +192,7 @@ export async function initializeSpreadsheet(): Promise<void> {
         "tone",
         "target_audience",
         "past_content_samples",
+        "past_content_urls", // NEW: JSON array of URL strings
         "fb_page_id",
         "ig_account_id",
         "meta_access_token",
@@ -211,6 +212,12 @@ export async function initializeSpreadsheet(): Promise<void> {
         "source_url",
         "relevance_score",
         "status",
+        "brand_relevance",   // NEW
+        "suggested_angles",  // NEW
+        "content_type",      // NEW
+        "target_reader",     // NEW
+        "search_keyword",    // NEW
+        "archived_at",       // NEW
         "created_at",
       ],
     },
@@ -220,6 +227,7 @@ export async function initializeSpreadsheet(): Promise<void> {
         "post_id",
         "brand_id",
         "topic_id",
+        "topic_title", // NEW: cached for UI
         "platform",
         "caption",
         "image_prompt",
@@ -279,10 +287,13 @@ export async function initializeSpreadsheet(): Promise<void> {
       headers: [
         "schedule_id",
         "brand_id",
-        "frequency",
-        "post_times",
-        "topic_discovery_day",
-        "analytics_day",
+        "weekday_mask",        // NEW: "1010101"
+        "time_slots",          // NEW: JSON array of "HH:mm"
+        "auto_publish_enabled", // NEW: "true" / "false"
+        "frequency",           // legacy
+        "post_times",          // legacy
+        "topic_discovery_day", // legacy
+        "analytics_day",       // legacy
         "updated_at",
       ],
     },
@@ -294,6 +305,8 @@ export async function initializeSpreadsheet(): Promise<void> {
         "workflow_name",
         "status",
         "message",
+        "subject",   // NEW: 人話描述
+        "progress",  // NEW: e.g. "3/7"
         "started_at",
         "finished_at",
       ],

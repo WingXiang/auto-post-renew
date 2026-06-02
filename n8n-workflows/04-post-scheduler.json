@@ -6,7 +6,7 @@
         "httpMethod": "POST",
         "path": "post-scheduler",
         "options": {},
-        "responseMode": "responseNode"
+        "responseMode": "lastNode"
       },
       "id": "a4000001-0000-0000-0000-000000000001",
       "name": "Webhook",
@@ -230,7 +230,7 @@
         "jsCode": "const brand = $('讀取品牌').first().json;\nconst post = $('讀取貼文').first().json;\n\nif (!brand.meta_access_token) {\n  throw new Error('品牌尚未設定 Meta Access Token，無法發佈');\n}\nif (!post.caption) {\n  throw new Error('貼文缺少文案內容');\n}\n\nconst platform = post.platform || 'both';\nconst publishFB = platform === 'facebook' || platform === 'both';\nconst publishIG = platform === 'instagram' || platform === 'both';\n\nreturn [{\n  json: {\n    ...post,\n    access_token: brand.meta_access_token,\n    fb_page_id: brand.fb_page_id,\n    ig_account_id: brand.ig_account_id,\n    publishFB,\n    publishIG\n  }\n}];"
       },
       "id": "a4000001-0000-0000-0000-000000000006",
-      "name": "準備發佈資料",
+      "name": "prepare_publish",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -271,27 +271,14 @@
         "method": "POST",
         "url": "=https://graph.facebook.com/v21.0/{{ $json.fb_page_id }}/photos",
         "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "message",
-              "value": "={{ $json.caption }}"
-            },
-            {
-              "name": "access_token",
-              "value": "={{ $json.access_token }}"
-            }
-          ]
-        },
         "options": {
           "retry": {
             "maxTries": 2
           }
         },
         "sendHeaders": false,
-        "sendBody": true,
-        "specifyBody": "form",
-        "bodyParameters": {
+        "sendBody": false,
+        "queryParameters": {
           "parameters": [
             {
               "name": "url",
@@ -329,7 +316,7 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ $('準備發佈資料').first().json.publishIG }}",
+              "leftValue": "={{ $('prepare_publish').first().json.publishIG }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -351,45 +338,28 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://graph.facebook.com/v21.0/{{ $('準備發佈資料').first().json.ig_account_id }}/media",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('prepare_publish').first().json.ig_account_id }}/media",
         "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "caption",
-              "value": "={{ $('準備發佈資料').first().json.caption }}"
-            },
-            {
-              "name": "image_url",
-              "value": "={{ $('準備發佈資料').first().json.image_url }}"
-            },
-            {
-              "name": "access_token",
-              "value": "={{ $('準備發佈資料').first().json.access_token }}"
-            }
-          ]
-        },
         "options": {
           "retry": {
             "maxTries": 2
           }
         },
         "sendHeaders": false,
-        "sendBody": true,
-        "specifyBody": "form",
-        "bodyParameters": {
+        "sendBody": false,
+        "queryParameters": {
           "parameters": [
             {
               "name": "image_url",
-              "value": "={{ $('準備發佈資料').first().json.image_url }}"
+              "value": "={{ $('prepare_publish').first().json.image_url }}"
             },
             {
               "name": "caption",
-              "value": "={{ $('準備發佈資料').first().json.caption }}"
+              "value": "={{ $('prepare_publish').first().json.caption }}"
             },
             {
               "name": "access_token",
-              "value": "={{ $('準備發佈資料').first().json.access_token }}"
+              "value": "={{ $('prepare_publish').first().json.access_token }}"
             }
           ]
         }
@@ -409,29 +379,16 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://graph.facebook.com/v21.0/{{ $('準備發佈資料').first().json.ig_account_id }}/media_publish",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('prepare_publish').first().json.ig_account_id }}/media_publish",
         "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "creation_id",
-              "value": "={{ $json.id }}"
-            },
-            {
-              "name": "access_token",
-              "value": "={{ $('準備發佈資料').first().json.access_token }}"
-            }
-          ]
-        },
         "options": {
           "retry": {
             "maxTries": 2
           }
         },
         "sendHeaders": false,
-        "sendBody": true,
-        "specifyBody": "form",
-        "bodyParameters": {
+        "sendBody": false,
+        "queryParameters": {
           "parameters": [
             {
               "name": "creation_id",
@@ -439,7 +396,7 @@
             },
             {
               "name": "access_token",
-              "value": "={{ $('準備發佈資料').first().json.access_token }}"
+              "value": "={{ $('prepare_publish').first().json.access_token }}"
             }
           ]
         }
@@ -458,7 +415,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const postId = $('驗證請求').first().json.post_id;\nconst fbResult = $('發佈 Facebook').first()?.json;\nconst igResult = $('發佈 IG 媒體').first()?.json;\n\nreturn [{\n  json: {\n    post_id: postId,\n    status: 'published',\n    fb_post_id: fbResult?.id || '',\n    ig_post_id: igResult?.id || ''\n  }\n}];"
+        "jsCode": "// Safely read FB / IG results — they may not have executed\nconst postId = $('驗證請求').first().json.post_id;\nlet fbResult = null;\nlet igResult = null;\ntry { fbResult = $('發佈 Facebook').first()?.json; } catch (e) {}\ntry { igResult = $('發佈 IG 媒體').first()?.json; } catch (e) {}\nreturn [{\n  json: {\n    post_id: postId,\n    status: 'published',\n    fb_post_id: fbResult?.id || fbResult?.post_id || '',\n    ig_post_id: igResult?.id || ''\n  }\n}];"
       },
       "id": "a4000001-0000-0000-0000-000000000012",
       "name": "合併結果",
@@ -747,20 +704,6 @@
     },
     {
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, data: { post_id: $('驗證請求').first().json.post_id, status: 'published' } }) }}"
-      },
-      "id": "a4000001-0000-0000-0000-000000000015",
-      "name": "回應成功",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        2800,
-        300
-      ]
-    },
-    {
-      "parameters": {
         "amount": 8,
         "unit": "seconds"
       },
@@ -823,23 +766,18 @@
       "main": [
         [
           {
-            "node": "準備發佈資料",
+            "node": "prepare_publish",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "準備發佈資料": {
+    "prepare_publish": {
       "main": [
         [
           {
             "node": "發佈到 Facebook?",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "發佈到 Instagram?",
             "type": "main",
             "index": 0
           }
@@ -857,7 +795,7 @@
         ],
         [
           {
-            "node": "合併結果",
+            "node": "發佈到 Instagram?",
             "type": "main",
             "index": 0
           }
@@ -868,7 +806,7 @@
       "main": [
         [
           {
-            "node": "合併結果",
+            "node": "發佈到 Instagram?",
             "type": "main",
             "index": 0
           }
@@ -939,13 +877,7 @@
     },
     "記錄完成": {
       "main": [
-        [
-          {
-            "node": "回應成功",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "等待 IG 處理": {

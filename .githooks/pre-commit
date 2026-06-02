@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+# 安裝方式：npm run secrets:install-hooks
+# 跳過一次：git commit --no-verify   （請盡量避免）
+
+node scripts/check-secrets.mjs
+exit_code=$?
+
+if [ $exit_code -ne 0 ]; then
+  echo ""
+  echo "Pre-commit blocked by secrets scan."
+  echo "如已輪換金鑰、確定為誤報，再用 git commit --no-verify 跳過。"
+  exit $exit_code
+fi

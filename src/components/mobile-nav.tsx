@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
+import { PipelineSidebar } from "./pipeline-sidebar";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
@@ -68,6 +69,9 @@ export function MobileNav() {
               </Link>
             ))}
           </nav>
+          <div className="border-t border-gray-100 px-3 py-3">
+            <PipelineSidebar mode="panel" />
+          </div>
         </div>
       )}
     </div>

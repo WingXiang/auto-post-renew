@@ -8,50 +8,106 @@ import {
   StatusBadge,
   EmptyState,
   Spinner,
-  Select,
-  Textarea,
-  Input,
+  Tabs,
+  HelpIcon,
   Badge,
+  Textarea,
 } from "@/components/ui";
+import { OnboardingStepBar } from "@/components/onboarding-stepbar";
 import type { Post, Schedule } from "@/types";
 
 type ViewMode = "list" | "calendar";
 
-const DAYS_OPTIONS = [
-  { value: "monday", label: "週一" },
-  { value: "tuesday", label: "週二" },
-  { value: "wednesday", label: "週三" },
-  { value: "thursday", label: "週四" },
-  { value: "friday", label: "週五" },
-  { value: "saturday", label: "週六" },
-  { value: "sunday", label: "週日" },
+const WEEKDAYS = [
+  { idx: 0, label: "週日" },
+  { idx: 1, label: "週一" },
+  { idx: 2, label: "週二" },
+  { idx: 3, label: "週三" },
+  { idx: 4, label: "週四" },
+  { idx: 5, label: "週五" },
+  { idx: 6, label: "週六" },
 ];
+
+function parseTimeSlots(raw: string): string[] {
+  if (!raw) return [];
+  try {
+    const j = JSON.parse(raw);
+    if (Array.isArray(j)) return j.filter((s) => typeof s === "string");
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
+
+function platformLabel(p: string) {
+  if (p === "facebook") return "📘 Facebook";
+  if (p === "instagram") return "📷 Instagram";
+  return "📘📷 FB + IG";
+}
+
+function nextSlotPreview(weekdayMask: string, slots: string[]): string {
+  if (!/^[01]{7}$/.test(weekdayMask) || slots.length === 0) return "";
+  const now = new Date();
+  for (let off = 0; off < 21; off++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + off);
+    if (weekdayMask[d.getDay()] !== "1") continue;
+    for (const s of slots) {
+      const [h, m] = s.split(":").map((n) => parseInt(n, 10));
+      if (Number.isNaN(h) || Number.isNaN(m)) continue;
+      const t = new Date(d);
+      t.setHours(h, m, 0, 0);
+      if (t.getTime() > now.getTime()) {
+        const wd = ["日", "一", "二", "三", "四", "五", "六"][t.getDay()];
+        return `下一篇將於 ${t.getMonth() + 1}/${t.getDate()} (${wd}) ${String(
+          t.getHours()
+        ).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")} 自動發佈到 FB + IG`;
+      }
+    }
+  }
+  return "";
+}
 
 export default function PostsPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<ViewMode>("list");
-  const [generating, setGenerating] = useState(false);
-  const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [schedule, setSchedule] = useState<Schedule | null>(null);
-  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [platformTab, setPlatformTab] = useState<"all" | "facebook" | "instagram">(
+    "all"
+  );
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingCaption, setEditingCaption] = useState("");
+  const [actingId, setActingId] = useState<string | null>(null);
   const [showSchedulePanel, setShowSchedulePanel] = useState(false);
+  const [, setSchedule] = useState<Schedule | null>(null);
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [weekdayMask, setWeekdayMask] = useState("0000000");
+  const [timeSlots, setTimeSlots] = useState<string[]>([]);
+  const [savingSchedule, setSavingSchedule] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
 
   const fetchPosts = useCallback(() => {
-    fetch("/api/posts")
+    fetch("/api/posts", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setPosts(d.posts ?? []))
       .finally(() => setLoading(false));
   }, []);
 
   const fetchSchedule = useCallback(() => {
-    fetch("/api/schedules")
+    fetch("/api/schedules", { cache: "no-store" })
       .then((r) => r.json())
-      .then((d) => setSchedule(d.schedule ?? null));
+      .then((d) => {
+        const s = d.schedule;
+        setSchedule(s ?? null);
+        if (s) {
+          setScheduleEnabled(s.auto_publish_enabled === "true");
+          setWeekdayMask(/^[01]{7}$/.test(s.weekday_mask) ? s.weekday_mask : "0000000");
+          setTimeSlots(parseTimeSlots(s.time_slots));
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -59,462 +115,488 @@ export default function PostsPage() {
     fetchSchedule();
   }, [fetchPosts, fetchSchedule]);
 
+  const toggleWeekday = (idx: number) => {
+    const arr = weekdayMask.split("");
+    arr[idx] = arr[idx] === "1" ? "0" : "1";
+    setWeekdayMask(arr.join(""));
+  };
+
+  const addTimeSlot = () => setTimeSlots((s) => [...s, "09:00"]);
+  const removeTimeSlot = (i: number) =>
+    setTimeSlots((s) => s.filter((_, idx) => idx !== i));
+  const updateTimeSlot = (i: number, v: string) =>
+    setTimeSlots((s) => s.map((x, idx) => (idx === i ? v : x)));
+
   const handleSaveSchedule = async () => {
-    if (!schedule) return;
     setSavingSchedule(true);
     try {
-      await fetch("/api/schedules", {
+      const r = await fetch("/api/schedules", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          frequency: schedule.frequency,
-          post_times: schedule.post_times,
-          topic_discovery_day: schedule.topic_discovery_day,
-          analytics_day: schedule.analytics_day,
+          weekday_mask: weekdayMask,
+          time_slots: timeSlots,
+          auto_publish_enabled: scheduleEnabled ? "true" : "false",
         }),
       });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        alert(`儲存失敗：${d.error ?? r.statusText}`);
+      } else {
+        if (d.auto_scheduled > 0) {
+          alert(`儲存成功，已自動為 ${d.auto_scheduled} 篇貼文排定發佈時間。`);
+        } else {
+          alert("儲存成功。");
+        }
+        fetchPosts();
+        fetchSchedule();
+      }
     } finally {
       setSavingSchedule(false);
     }
   };
 
-  const updateScheduleField = (field: keyof Schedule, value: string) => {
-    setSchedule((prev) => (prev ? { ...prev, [field]: value } : prev));
-  };
-
-  const handleGenerate = async () => {
-    setGenerating(true);
+  const handleAction = async (
+    postId: string,
+    action: "regenerate" | "publish" | "update",
+    extra?: Record<string, string>
+  ) => {
+    if (action === "publish" && !confirm("確定要立即發布這篇貼文嗎？")) return;
+    setActingId(postId);
     try {
-      await fetch("/api/posts", {
+      const r = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "generate" }),
+        body: JSON.stringify({ action, post_id: postId, ...(extra ?? {}) }),
       });
-      setTimeout(fetchPosts, 5000);
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const handleUpdatePost = async (postId: string, updates: Partial<Post>) => {
-    await fetch("/api/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "update", post_id: postId, ...updates }),
-    });
-    setPosts((prev) =>
-      prev.map((p) => (p.post_id === postId ? { ...p, ...updates } : p))
-    );
-    setEditingPost(null);
-  };
-
-  const handleSchedule = async (postId: string, scheduledTime: string) => {
-    await fetch("/api/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "schedule",
-        post_id: postId,
-        scheduled_time: scheduledTime,
-      }),
-    });
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.post_id === postId
-          ? { ...p, status: "scheduled" as const, scheduled_time: scheduledTime }
-          : p
-      )
-    );
-  };
-
-  const [publishing, setPublishing] = useState<string | null>(null);
-  const handlePublish = async (postId: string) => {
-    if (!confirm("確定要立即發布這篇貼文到 FB 與 IG 嗎？")) return;
-    setPublishing(postId);
-    try {
-      const res = await fetch("/api/posts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "publish", post_id: postId }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success !== false) {
-        // Poll for status change
-        setTimeout(fetchPosts, 8000);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        alert(`${action} 失敗：${d.error ?? r.statusText}`);
       } else {
-        alert(`發布失敗：${data.error || "請檢查 Meta 設定與 access token"}`);
+        if (action === "regenerate") {
+          alert("已開始重新生成，約需 30-60 秒。請看左下角執行進度。");
+        }
+        await fetchPosts();
       }
-    } catch (e) {
-      alert(`發布失敗：${e instanceof Error ? e.message : "未知錯誤"}`);
     } finally {
-      setPublishing(null);
+      setActingId(null);
+      if (action === "update") setEditingId(null);
     }
   };
 
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const first = new Date(year, month, 1);
-    const last = new Date(year, month + 1, 0);
-    const days: Date[] = [];
-    const startDay = first.getDay();
-    for (let i = startDay - 1; i >= 0; i--) {
-      days.push(new Date(year, month, -i));
-    }
-    for (let i = 1; i <= last.getDate(); i++) {
-      days.push(new Date(year, month, i));
-    }
-    while (days.length % 7 !== 0) {
-      days.push(new Date(year, month + 1, days.length - last.getDate() - startDay + 1));
-    }
-    return days;
-  };
+  const filtered =
+    platformTab === "all"
+      ? posts
+      : posts.filter((p) => p.platform === platformTab);
 
-  const getPostsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split("T")[0];
-    return posts.filter((p) => p.scheduled_time?.startsWith(dateStr));
-  };
+  const preview = nextSlotPreview(weekdayMask, timeSlots);
 
   if (loading) return <Spinner />;
 
   return (
     <div>
+      <OnboardingStepBar />
+
       <PageHeader
         title="貼文排程"
-        description="管理、生成與排程社群貼文"
+        description="AI 寫好的文案在這。設定自動排程後，AI 會在你選的時段自動發佈到 FB + IG。"
         actions={
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <Button
               variant="secondary"
               onClick={() => setShowSchedulePanel((v) => !v)}
             >
-              {showSchedulePanel ? "隱藏排程設定" : "排程設定"}
+              {showSchedulePanel ? "收起自動排程" : "⚙ 自動排程"}
             </Button>
-            <Button
-              variant="secondary"
-              onClick={() => setView(view === "list" ? "calendar" : "list")}
-            >
-              {view === "list" ? "日曆視圖" : "列表視圖"}
-            </Button>
-            <Button onClick={handleGenerate} disabled={generating}>
-              {generating ? "生成中..." : "AI 生成貼文"}
-            </Button>
+            <HelpIcon text="這頁列出 AI 寫的所有貼文。點「重新生成此文」讓 AI 重寫；點「立即發布」現在就發。打開上方「自動排程」就能設定 AI 每週固定時間自動發。" />
           </div>
         }
       />
 
-      {showSchedulePanel && schedule && (
+      {/* 自動排程 Panel */}
+      {showSchedulePanel && (
         <Card className="mb-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">排程設定</h2>
-            <Button
-              onClick={handleSaveSchedule}
-              disabled={savingSchedule}
-              size="sm"
-            >
-              {savingSchedule ? "儲存中..." : "儲存"}
-            </Button>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Select
-              label="每週發文次數"
-              value={schedule.frequency}
-              onChange={(e) => updateScheduleField("frequency", e.target.value)}
-            >
-              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                <option key={n} value={String(n)}>
-                  {n} 次/週
-                </option>
-              ))}
-            </Select>
-            <Input
-              label="發文時段（逗號分隔）"
-              value={
-                (() => {
-                  try {
-                    return JSON.parse(schedule.post_times).join(", ");
-                  } catch {
-                    return schedule.post_times;
-                  }
-                })()
-              }
-              onChange={(e) =>
-                updateScheduleField(
-                  "post_times",
-                  JSON.stringify(
-                    e.target.value.split(",").map((t) => t.trim())
-                  )
-                )
-              }
-              placeholder="09:00, 12:00, 18:00"
-            />
-            <Select
-              label="主題搜尋日"
-              value={schedule.topic_discovery_day}
-              onChange={(e) =>
-                updateScheduleField("topic_discovery_day", e.target.value)
-              }
-            >
-              {DAYS_OPTIONS.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </Select>
-            <Select
-              label="數據分析日"
-              value={schedule.analytics_day}
-              onChange={(e) =>
-                updateScheduleField("analytics_day", e.target.value)
-              }
-            >
-              {DAYS_OPTIONS.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </Select>
+          <h3 className="mb-3 text-sm font-semibold text-gray-900">自動排程</h3>
+          <div className="space-y-4">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={scheduleEnabled}
+                onChange={(e) => setScheduleEnabled(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                開啟自動排程 — AI 會自動把草稿依下面設定填入發佈時間
+              </span>
+            </label>
+            <div>
+              <div className="mb-2 text-sm font-medium text-gray-700">
+                哪幾天發？(可多選)
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {WEEKDAYS.map((w) => {
+                  const active = weekdayMask[w.idx] === "1";
+                  return (
+                    <button
+                      key={w.idx}
+                      onClick={() => toggleWeekday(w.idx)}
+                      className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+                        active
+                          ? "bg-blue-600 text-white"
+                          : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      {w.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <div className="mb-2 text-sm font-medium text-gray-700">
+                每天什麼時間發？(可加多個)
+              </div>
+              <div className="space-y-2">
+                {timeSlots.map((slot, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      value={slot}
+                      onChange={(e) => updateTimeSlot(i, e.target.value)}
+                      className="rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => removeTimeSlot(i)}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      移除
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={addTimeSlot}
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  + 加一個時段
+                </button>
+              </div>
+            </div>
+            {preview && (
+              <div className="rounded-md bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                預覽：{preview}
+              </div>
+            )}
+            <div className="flex gap-2 border-t border-gray-100 pt-3">
+              <Button onClick={handleSaveSchedule} disabled={savingSchedule}>
+                {savingSchedule ? "儲存中…" : "儲存"}
+              </Button>
+              <span className="self-center text-xs text-gray-500">
+                儲存後若已啟用，會把所有「未排程草稿」自動填入下一輪可用時段
+              </span>
+            </div>
           </div>
         </Card>
       )}
 
-      {posts.length === 0 ? (
+      {/* 篩選列 */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <Tabs
+          value={platformTab}
+          onChange={(v) =>
+            setPlatformTab(v as "all" | "facebook" | "instagram")
+          }
+          options={[
+            { value: "all", label: `全部 (${posts.length})` },
+            {
+              value: "facebook",
+              label: `📘 FB (${posts.filter((p) => p.platform === "facebook").length})`,
+            },
+            {
+              value: "instagram",
+              label: `📷 IG (${posts.filter((p) => p.platform === "instagram").length})`,
+            },
+          ]}
+        />
+        <Tabs
+          value={view}
+          onChange={(v) => setView(v as ViewMode)}
+          options={[
+            { value: "list", label: "清單" },
+            { value: "calendar", label: "月曆" },
+          ]}
+        />
+      </div>
+
+      {filtered.length === 0 ? (
         <EmptyState
           title="尚無貼文"
-          description="先批准主題，再點擊「AI 生成貼文」自動生成內容"
-          action={
-            <Button onClick={handleGenerate} disabled={generating}>
-              AI 生成貼文
-            </Button>
+          description="去主題管理按「+ 搜尋新主題」，AI 會自動找主題並寫成 14 篇貼文"
+        />
+      ) : view === "calendar" ? (
+        <CalendarView
+          posts={filtered}
+          month={calendarMonth}
+          onPrev={() =>
+            setCalendarMonth(
+              new Date(
+                calendarMonth.getFullYear(),
+                calendarMonth.getMonth() - 1,
+                1
+              )
+            )
+          }
+          onNext={() =>
+            setCalendarMonth(
+              new Date(
+                calendarMonth.getFullYear(),
+                calendarMonth.getMonth() + 1,
+                1
+              )
+            )
           }
         />
-      ) : view === "list" ? (
-        <div className="space-y-4">
-          {posts.map((post) => (
-            <Card key={post.post_id}>
-              {editingPost?.post_id === post.post_id ? (
-                <div className="space-y-4">
-                  <Textarea
-                    label="文案"
-                    value={editingPost.caption}
-                    onChange={(e) =>
-                      setEditingPost({ ...editingPost, caption: e.target.value })
-                    }
-                    rows={4}
-                  />
-                  <Textarea
-                    label="圖片提示詞"
-                    value={editingPost.image_prompt}
-                    onChange={(e) =>
-                      setEditingPost({
-                        ...editingPost,
-                        image_prompt: e.target.value,
-                      })
-                    }
-                    rows={2}
-                  />
-                  <Select
-                    label="平台"
-                    value={editingPost.platform}
-                    onChange={(e) =>
-                      setEditingPost({
-                        ...editingPost,
-                        platform: e.target.value as Post["platform"],
-                      })
-                    }
-                  >
-                    <option value="both">Facebook + Instagram</option>
-                    <option value="facebook">僅 Facebook</option>
-                    <option value="instagram">僅 Instagram</option>
-                  </Select>
-                  <Input
-                    label="排程時間"
-                    type="datetime-local"
-                    value={editingPost.scheduled_time?.slice(0, 16) ?? ""}
-                    onChange={(e) =>
-                      setEditingPost({
-                        ...editingPost,
-                        scheduled_time: e.target.value
-                          ? new Date(e.target.value).toISOString()
-                          : "",
-                      })
-                    }
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() =>
-                        handleUpdatePost(post.post_id, {
-                          caption: editingPost.caption,
-                          image_prompt: editingPost.image_prompt,
-                          platform: editingPost.platform,
-                        })
-                      }
-                    >
-                      儲存
-                    </Button>
-                    <Button variant="secondary" onClick={() => setEditingPost(null)}>
-                      取消
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-2 flex items-start justify-between">
-                    <div className="flex gap-2">
-                      <Badge color="blue">
-                        {post.platform === "both"
-                          ? "FB + IG"
-                          : post.platform === "facebook"
-                          ? "Facebook"
-                          : "Instagram"}
-                      </Badge>
-                      <StatusBadge status={post.status} />
-                      {post.optimization_version > 0 && (
-                        <Badge color="green">v{post.optimization_version}</Badge>
-                      )}
-                    </div>
-                    <div className="flex gap-1">
-                      {(post.status === "draft" || post.status === "scheduled") && (
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          onClick={() => handlePublish(post.post_id)}
-                          disabled={publishing === post.post_id}
-                        >
-                          {publishing === post.post_id ? "發布中..." : "立即發布"}
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setEditingPost({ ...post })}
-                      >
-                        編輯
-                      </Button>
-                    </div>
-                  </div>
-                  {post.image_url && (
-                    <img
-                      src={post.image_url}
-                      alt="post image"
-                      className="mb-3 max-h-64 rounded-md border border-gray-200 object-cover"
-                    />
-                  )}
-                  <p className="mb-2 whitespace-pre-wrap text-sm text-gray-700">
-                    {post.caption || "(尚無文案)"}
-                  </p>
-                  {post.image_prompt && (
-                    <p className="mb-2 text-xs text-gray-400">
-                      圖片提示: {post.image_prompt}
-                    </p>
-                  )}
-                  {post.scheduled_time && (
-                    <p className="mb-2 text-xs text-gray-500">
-                      排程時間:{" "}
-                      {new Date(post.scheduled_time).toLocaleString("zh-TW")}
-                    </p>
-                  )}
-                  {(post.fb_post_id || post.ig_post_id) && (
-                    <div className="mb-2 flex gap-3 text-xs text-gray-500">
-                      {post.fb_post_id && <span>FB: {post.fb_post_id}</span>}
-                      {post.ig_post_id && <span>IG: {post.ig_post_id}</span>}
-                    </div>
-                  )}
-                  {post.status === "draft" && (
-                    <div className="flex gap-2">
-                      <Input
-                        type="datetime-local"
-                        className="w-auto"
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleSchedule(
-                              post.post_id,
-                              new Date(e.target.value).toISOString()
-                            );
-                          }
-                        }}
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-            </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {filtered.map((p) => (
+            <PostCard
+              key={p.post_id}
+              post={p}
+              isEditing={editingId === p.post_id}
+              editingCaption={editingCaption}
+              setEditingCaption={setEditingCaption}
+              startEdit={() => {
+                setEditingId(p.post_id);
+                setEditingCaption(p.caption);
+              }}
+              cancelEdit={() => setEditingId(null)}
+              busy={actingId === p.post_id}
+              onRegenerate={() => handleAction(p.post_id, "regenerate")}
+              onPublish={() => handleAction(p.post_id, "publish")}
+              onSaveEdit={() =>
+                handleAction(p.post_id, "update", { caption: editingCaption })
+              }
+            />
           ))}
         </div>
-      ) : (
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <Button
-              variant="ghost"
-              onClick={() =>
-                setCalendarMonth(
-                  new Date(
-                    calendarMonth.getFullYear(),
-                    calendarMonth.getMonth() - 1,
-                    1
-                  )
-                )
-              }
-            >
-              ← 上月
-            </Button>
-            <h2 className="text-lg font-semibold">
-              {calendarMonth.getFullYear()} 年{" "}
-              {calendarMonth.getMonth() + 1} 月
-            </h2>
-            <Button
-              variant="ghost"
-              onClick={() =>
-                setCalendarMonth(
-                  new Date(
-                    calendarMonth.getFullYear(),
-                    calendarMonth.getMonth() + 1,
-                    1
-                  )
-                )
-              }
-            >
-              下月 →
-            </Button>
+      )}
+    </div>
+  );
+}
+
+function PostCard({
+  post,
+  isEditing,
+  editingCaption,
+  setEditingCaption,
+  startEdit,
+  cancelEdit,
+  onRegenerate,
+  onPublish,
+  onSaveEdit,
+  busy,
+}: {
+  post: Post;
+  isEditing: boolean;
+  editingCaption: string;
+  setEditingCaption: (s: string) => void;
+  startEdit: () => void;
+  cancelEdit: () => void;
+  onRegenerate: () => void;
+  onPublish: () => void;
+  onSaveEdit: () => void;
+  busy: boolean;
+}) {
+  const isPublished = post.status === "published";
+  return (
+    <Card className="flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          {post.topic_title && (
+            <div className="text-xs text-gray-500">📌 {post.topic_title}</div>
+          )}
+          <div className="mt-1 flex items-center gap-2">
+            <Badge color={post.platform === "facebook" ? "blue" : "yellow"}>
+              {platformLabel(post.platform)}
+            </Badge>
+            <StatusBadge status={post.status} />
+            {post.scheduled_time && (
+              <span className="text-xs text-gray-500">
+                {new Date(post.scheduled_time).toLocaleString("zh-TW", {
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            )}
           </div>
-          <div className="grid grid-cols-7 gap-px bg-gray-200">
-            {["日", "一", "二", "三", "四", "五", "六"].map((d) => (
-              <div key={d} className="bg-gray-50 p-2 text-center text-xs font-medium text-gray-500">
-                {d}
-              </div>
-            ))}
-            {getDaysInMonth(calendarMonth).map((date, i) => {
-              const dayPosts = getPostsForDate(date);
-              const isCurrentMonth = date.getMonth() === calendarMonth.getMonth();
-              return (
-                <div
-                  key={i}
-                  className={`min-h-[80px] bg-white p-1 ${
-                    isCurrentMonth ? "" : "opacity-40"
-                  }`}
-                >
-                  <div className="text-xs text-gray-500">{date.getDate()}</div>
-                  {dayPosts.map((p) => (
+        </div>
+      </div>
+      {post.image_url && (
+        <div className="relative h-40 w-full overflow-hidden rounded-md bg-gray-100">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={post.image_url}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        </div>
+      )}
+      {isEditing ? (
+        <Textarea
+          rows={6}
+          value={editingCaption}
+          onChange={(e) => setEditingCaption(e.target.value)}
+        />
+      ) : (
+        <div className="whitespace-pre-wrap text-sm text-gray-700 line-clamp-6">
+          {post.caption || "(尚無文字)"}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+        {isEditing ? (
+          <>
+            <Button size="sm" onClick={onSaveEdit} disabled={busy}>
+              儲存
+            </Button>
+            <Button size="sm" variant="ghost" onClick={cancelEdit}>
+              取消
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={onRegenerate}
+              disabled={busy || isPublished}
+              title={isPublished ? "已發布的貼文不能重新生成" : ""}
+            >
+              {busy ? "處理中…" : "重新生成此文"}
+            </Button>
+            {!isPublished && (
+              <Button size="sm" onClick={onPublish} disabled={busy}>
+                {busy ? "發布中…" : "立即發布"}
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={startEdit}
+              disabled={busy || isPublished}
+            >
+              編輯
+            </Button>
+          </>
+        )}
+        {(post.fb_post_id || post.ig_post_id) && (
+          <a
+            target="_blank"
+            rel="noopener"
+            href={
+              post.platform === "facebook"
+                ? `https://facebook.com/${post.fb_post_id}`
+                : `https://www.instagram.com/p/${post.ig_post_id}/`
+            }
+            className="ml-auto self-center text-xs text-blue-600 hover:underline"
+          >
+            看已發布的貼文 ↗
+          </a>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function CalendarView({
+  posts,
+  month,
+  onPrev,
+  onNext,
+}: {
+  posts: Post[];
+  month: Date;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const year = month.getFullYear();
+  const m = month.getMonth();
+  const firstDay = new Date(year, m, 1);
+  const lastDay = new Date(year, m + 1, 0);
+  const startWeekday = firstDay.getDay();
+  const totalDays = lastDay.getDate();
+  const cells: (Date | null)[] = [];
+  for (let i = 0; i < startWeekday; i++) cells.push(null);
+  for (let d = 1; d <= totalDays; d++) cells.push(new Date(year, m, d));
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const postsByDay = new Map<string, Post[]>();
+  for (const p of posts) {
+    if (!p.scheduled_time) continue;
+    const t = new Date(p.scheduled_time);
+    if (t.getFullYear() !== year || t.getMonth() !== m) continue;
+    const key = String(t.getDate());
+    const arr = postsByDay.get(key) ?? [];
+    arr.push(p);
+    postsByDay.set(key, arr);
+  }
+
+  return (
+    <Card className="p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <button onClick={onPrev} className="text-sm text-gray-600">
+          ◀ 上月
+        </button>
+        <div className="text-base font-semibold">
+          {year} 年 {m + 1} 月
+        </div>
+        <button onClick={onNext} className="text-sm text-gray-600">
+          下月 ▶
+        </button>
+      </div>
+      <div className="grid grid-cols-7 gap-px bg-gray-200">
+        {["日", "一", "二", "三", "四", "五", "六"].map((d) => (
+          <div
+            key={d}
+            className="bg-gray-50 px-1 py-1 text-center text-xs font-medium text-gray-500"
+          >
+            {d}
+          </div>
+        ))}
+        {cells.map((c, i) => (
+          <div
+            key={i}
+            className="min-h-20 bg-white p-1 text-xs"
+            style={{ minHeight: 80 }}
+          >
+            {c && (
+              <>
+                <div className="mb-1 text-right text-gray-500">
+                  {c.getDate()}
+                </div>
+                <div className="space-y-1">
+                  {(postsByDay.get(String(c.getDate())) ?? []).map((p) => (
                     <div
                       key={p.post_id}
-                      className={`mt-0.5 truncate rounded px-1 text-xs ${
+                      title={p.topic_title || p.caption}
+                      className={`truncate rounded px-1 py-0.5 text-[10px] ${
                         p.status === "published"
                           ? "bg-green-100 text-green-700"
                           : p.status === "scheduled"
                           ? "bg-blue-100 text-blue-700"
-                          : "bg-gray-100 text-gray-600"
+                          : "bg-gray-100 text-gray-700"
                       }`}
-                      title={p.caption}
                     >
-                      {p.caption?.slice(0, 15) || "貼文"}
+                      {p.platform === "facebook" ? "📘" : "📷"}{" "}
+                      {p.topic_title || p.caption.slice(0, 8)}
                     </div>
                   ))}
                 </div>
-              );
-            })}
+              </>
+            )}
           </div>
-        </Card>
-      )}
-    </div>
+        ))}
+      </div>
+    </Card>
   );
 }

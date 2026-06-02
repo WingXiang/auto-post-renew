@@ -28,6 +28,7 @@ export async function PUT(req: NextRequest) {
       "tone",
       "target_audience",
       "past_content_samples",
+      "past_content_urls", // NEW
       "fb_page_id",
       "ig_account_id",
       "meta_access_token",

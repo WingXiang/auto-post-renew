@@ -7,6 +7,7 @@ import {
 import { zhTW } from "@clerk/localizations";
 import Link from "next/link";
 import { MobileNav } from "@/components/mobile-nav";
+import { PipelineSidebar } from "@/components/pipeline-sidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -51,7 +52,7 @@ export default function RootLayout({
                   }}
                 />
               </div>
-              <nav className="flex-1 space-y-1 px-3 py-4">
+              <nav className="space-y-1 px-3 py-4">
                 {navItems.map((item) => (
                   <Link
                     key={item.href}
@@ -62,6 +63,9 @@ export default function RootLayout({
                   </Link>
                 ))}
               </nav>
+              <div className="flex-1 overflow-hidden border-t border-gray-200 p-3">
+                <PipelineSidebar mode="sidebar" />
+              </div>
               <div className="border-t border-gray-200 p-4">
                 <UserButton
                   showName

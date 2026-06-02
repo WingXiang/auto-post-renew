@@ -1,7 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
 
-export function generateId(): string {
-  return uuidv4();
+export function generateId(prefix?: string): string {
+  const id = uuidv4();
+  return prefix ? `${prefix}-${id}` : id;
 }
 
 export function formatDate(date: Date): string {

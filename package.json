@@ -6,12 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "secrets:scan": "node scripts/check-secrets.mjs",
+    "secrets:scan-all": "node scripts/check-secrets.mjs --all",
+    "secrets:install-hooks": "git config core.hooksPath .githooks"
   },
   "dependencies": {
     "@clerk/localizations": "^4.7.0",
     "@clerk/nextjs": "^7.4.2",
     "@vercel/blob": "^2.4.0",
+    "cheerio": "^1.2.0",
     "googleapis": "^173.0.0",
     "next": "16.2.6",
     "react": "19.2.4",

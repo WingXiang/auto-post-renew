@@ -1,18 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireBrandId } from "@/lib/auth";
-import { getRowsByBrand, appendRow, updateRow } from "@/lib/google-sheets";
+import {
+  getRowsByBrand,
+  appendRow,
+  updateRow,
+  getRows,
+} from "@/lib/google-sheets";
 import { triggerWorkflow } from "@/lib/n8n";
 import { generateId, formatDate } from "@/lib/utils";
+import { redactError } from "@/lib/redact";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const brandId = await requireBrandId();
-    const posts = await getRowsByBrand("posts", brandId);
+    const platform = req.nextUrl.searchParams.get("platform");
+    const all = await getRowsByBrand("posts", brandId);
+    const posts =
+      platform && ["facebook", "instagram", "both"].includes(platform)
+        ? all.filter((p) => p.platform === platform)
+        : all;
     return NextResponse.json({ posts });
   } catch (e) {
     if (e instanceof Error && e.message === "NO_ORG")
       return NextResponse.json({ error: "請先選擇品牌" }, { status: 400 });
-    return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
+    return NextResponse.json(
+      { error: redactError(e) || "伺服器錯誤" },
+      { status: 500 }
+    );
   }
 }
 
@@ -29,11 +43,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(result);
     }
 
+    if (action === "regenerate" && post_id) {
+      // 找出 post 對應的 topic_id 後重新觸發 content-generation 的 update 模式
+      const all = await getRows(
+        "posts",
+        (r) => r.brand_id === brandId && r.post_id === post_id
+      );
+      const post = all[0];
+      if (!post) {
+        return NextResponse.json({ error: "貼文不存在" }, { status: 404 });
+      }
+      const result = await triggerWorkflow("content-generation", {
+        brand_id: brandId,
+        topic_id: post.topic_id ?? "",
+        post_id,
+        mode: "regenerate",
+      });
+      return NextResponse.json(result);
+    }
+
     if (action === "create") {
       const post = {
         post_id: generateId(),
         brand_id: brandId,
         topic_id: topic_id ?? "",
+        topic_title: data.topic_title ?? "",
         platform: data.platform ?? "both",
         caption: data.caption ?? "",
         image_prompt: data.image_prompt ?? "",
@@ -84,6 +118,9 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     if (e instanceof Error && e.message === "NO_ORG")
       return NextResponse.json({ error: "請先選擇品牌" }, { status: 400 });
-    return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
+    return NextResponse.json(
+      { error: redactError(e) || "伺服器錯誤" },
+      { status: 500 }
+    );
   }
 }
