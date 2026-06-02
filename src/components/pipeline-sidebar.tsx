@@ -8,6 +8,23 @@ const POLL_MS = 5000;
 const ACTIVE_LIMIT = 5;
 const DONE_LIMIT = 5;
 
+// 把英文 workflow_name 翻成中文（給沒有 subject 的舊紀錄用）
+const WORKFLOW_LABEL: Record<string, string> = {
+  "brand-setup": "品牌初始化",
+  "topic-discovery": "搜尋主題",
+  "content-generation": "產生貼文",
+  "post-scheduler": "發佈貼文",
+  "analytics-collection": "收集互動數據",
+  "weekly-optimization": "每週優化",
+  "customer-identification": "辨識潛在客戶",
+  "update-schedule": "更新排程",
+};
+
+function localize(name: string): string {
+  if (!name) return "(未命名)";
+  return WORKFLOW_LABEL[name] ?? name;
+}
+
 function timeAgo(iso?: string) {
   if (!iso) return "";
   const diff = Date.now() - new Date(iso).getTime();
@@ -34,7 +51,7 @@ function LogRow({
       : log.status === "failed"
       ? "red"
       : "gray";
-  const subject = log.subject || log.workflow_name || "(未命名)";
+  const subject = log.subject || localize(log.workflow_name);
   return (
     <div className="border-b border-gray-100 px-3 py-2 last:border-b-0">
       <div className="flex items-start justify-between gap-2">

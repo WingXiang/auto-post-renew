@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireBrandId } from "@/lib/auth";
-import { getRowsByBrand, updateRow } from "@/lib/google-sheets";
+import {
+  getRowsByBrand,
+  updateRow,
+  bulkUpdateColumn,
+} from "@/lib/google-sheets";
 import { triggerWorkflow } from "@/lib/n8n";
 import { redactError } from "@/lib/redact";
 import { formatDate } from "@/lib/utils";
@@ -32,18 +36,19 @@ export async function POST(req: NextRequest) {
     const { action, topic_id, status } = body;
 
     if (action === "discover") {
-      // 1) 把該品牌所有未封存主題自動標 archived
+      // 1) 一次性把該品牌所有未封存主題標 archived（單一 batchUpdate，避免配額爆）
       const all = await getRowsByBrand("topics", brandId);
       const now = formatDate(new Date());
-      let archived = 0;
-      for (const t of all) {
-        if (!t.archived_at && t.topic_id) {
-          await updateRow("topics", "topic_id", t.topic_id, {
-            archived_at: now,
-          });
-          archived++;
-        }
-      }
+      const toArchive = all
+        .filter((t) => !t.archived_at && t.topic_id)
+        .map((t) => t.topic_id);
+      const archived = await bulkUpdateColumn(
+        "topics",
+        "topic_id",
+        toArchive,
+        "archived_at",
+        toArchive.map(() => now)
+      );
       // 2) 把使用者的搜尋條件全部轉發給 n8n
       const result = await triggerWorkflow("topic-discovery", {
         brand_id: brandId,
@@ -56,18 +61,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "archive_all") {
-      // 把該品牌所有未封存主題標為封存
       const all = await getRowsByBrand("topics", brandId);
       const now = formatDate(new Date());
-      let n = 0;
-      for (const t of all) {
-        if (!t.archived_at && t.topic_id) {
-          await updateRow("topics", "topic_id", t.topic_id, {
-            archived_at: now,
-          });
-          n++;
-        }
-      }
+      const ids = all
+        .filter((t) => !t.archived_at && t.topic_id)
+        .map((t) => t.topic_id);
+      const n = await bulkUpdateColumn(
+        "topics",
+        "topic_id",
+        ids,
+        "archived_at",
+        ids.map(() => now)
+      );
       return NextResponse.json({ success: true, archived: n });
     }
 

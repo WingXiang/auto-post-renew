@@ -125,6 +125,69 @@ export async function updateRow(
   return true;
 }
 
+/**
+ * 一次更新某個欄位多個列 — 用 single batchUpdate API call 避免 Sheets 配額爆掉。
+ * matchValues / values 索引對應；若某 matchValue 找不到列就跳過。
+ * 回傳實際更新的列數。
+ */
+export async function bulkUpdateColumn(
+  sheet: SheetName,
+  matchColumn: string,
+  matchValues: string[],
+  targetColumn: string,
+  values: string[]
+): Promise<number> {
+  if (matchValues.length === 0) return 0;
+  if (matchValues.length !== values.length) {
+    throw new Error("bulkUpdateColumn: matchValues / values 長度不一致");
+  }
+  const sheets = getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${sheet}!A:Z`,
+  });
+  const rows = res.data.values;
+  if (!rows || rows.length < 2) return 0;
+  const headers = rows[0];
+  const matchIdx = headers.indexOf(matchColumn);
+  const targetIdx = headers.indexOf(targetColumn);
+  if (matchIdx === -1 || targetIdx === -1) return 0;
+
+  // 把 matchValue → row 索引（1-based row in sheet = i+1）映射
+  const rowByValue = new Map<string, number>();
+  for (let i = 1; i < rows.length; i++) {
+    const v = rows[i][matchIdx];
+    if (v) rowByValue.set(v, i + 1); // sheet 是 1-based
+  }
+
+  function colLetter(n: number): string {
+    let s = "";
+    let x = n;
+    while (true) {
+      s = String.fromCharCode("A".charCodeAt(0) + (x % 26)) + s;
+      if (x < 26) return s;
+      x = Math.floor(x / 26) - 1;
+    }
+  }
+  const col = colLetter(targetIdx);
+
+  const data: { range: string; values: string[][] }[] = [];
+  let n = 0;
+  for (let i = 0; i < matchValues.length; i++) {
+    const rowNum = rowByValue.get(matchValues[i]);
+    if (!rowNum) continue;
+    data.push({ range: `${sheet}!${col}${rowNum}`, values: [[values[i]]] });
+    n++;
+  }
+  if (n === 0) return 0;
+
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { valueInputOption: "USER_ENTERED", data },
+  });
+  return n;
+}
+
 export async function deleteRow(
   sheet: SheetName,
   matchColumn: string,

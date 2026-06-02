@@ -4,6 +4,7 @@ import {
   getRowsByBrand,
   updateRow,
   appendRow,
+  bulkUpdateColumn,
 } from "@/lib/google-sheets";
 import { triggerWorkflow } from "@/lib/n8n";
 import { formatDate, generateId } from "@/lib/utils";
@@ -86,19 +87,33 @@ async function autoFillSchedule(
   }
 
   const times = computeNextSlots(weekdayMask, slots, order.length);
-  let scheduled = 0;
+  // 收集 post_id 與目標時間，最後做 2 個 batchUpdate（status + scheduled_time）
+  const ids: string[] = [];
+  const timesArr: string[] = [];
   for (let i = 0; i < order.length; i++) {
     const t = times[i];
     if (!t) break;
     for (const p of groups[order[i]]) {
-      await updateRow("posts", "post_id", p.post_id, {
-        status: "scheduled",
-        scheduled_time: t,
-      });
-      scheduled++;
+      ids.push(p.post_id);
+      timesArr.push(t);
     }
   }
-  return { scheduled };
+  if (ids.length === 0) return { scheduled: 0 };
+  await bulkUpdateColumn(
+    "posts",
+    "post_id",
+    ids,
+    "scheduled_time",
+    timesArr
+  );
+  await bulkUpdateColumn(
+    "posts",
+    "post_id",
+    ids,
+    "status",
+    ids.map(() => "scheduled")
+  );
+  return { scheduled: ids.length };
 }
 
 export async function PUT(req: NextRequest) {
