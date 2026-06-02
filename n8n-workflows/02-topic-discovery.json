@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-02T03:42:54.728Z",
+  "updatedAt": "2026-06-02T05:23:37.058Z",
   "createdAt": "2026-06-01T08:01:57.641Z",
   "id": "htT0ohoqmevDqXcq",
   "name": "主題探索",
@@ -271,7 +271,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{ $env.GEMINI_MODEL || 'gemini-2.0-flash' }}:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -505,7 +505,7 @@
           "value": {
             "log_id": "={{ $('驗證請求').first().json.log_id }}",
             "status": "success",
-            "message": "={{ '搜尋主題：' + ($('驗證請求').first().json.search_keyword || $('讀取品牌資料').first().json.theme || '品牌主題') + '，找到 ' + $('解析 AI 結果').all().length + ' 個，已自動產生 ' + $('解析 AI 結果').all().length + ' 篇文案' }}",
+            "message": "={{ '搜尋主題：' + ($('驗證請求').first().json.search_keyword || $('讀取品牌資料').first().json.theme || '品牌主題') + '，找到 ' + $('解析 AI 結果').all().length + ' 個。已開始依序產生 ' + $('解析 AI 結果').all().length + ' 篇文案（每篇間隔 15 秒，預計 2 分鐘完成）' }}",
             "finished_at": "={{ $now.toISO() }}",
             "subject": "={{ '搜尋主題：' + ($('驗證請求').first().json.search_keyword || $('讀取品牌資料').first().json.theme || '品牌主題') }}",
             "progress": "={{ $('解析 AI 結果').all().length + '/7' }}"
@@ -633,7 +633,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Fan-out: 對每個新主題觸發 content-generation webhook（fire-and-forget）\nconst apiKey = $env.N8N_API_KEY;\nconst brandId = $('驗證請求').first().json.brand_id;\nconst items = $input.all();\nconst promises = items.map(item => {\n  const topic_id = item.json.topic_id;\n  const topic_title = item.json.topic_title;\n  return this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://wing.zeabur.app/webhook/content-generation',\n    body: { api_key: apiKey, brand_id: brandId, topic_id, topic_title },\n    json: true,\n    timeout: 5000\n  }).catch(e => ({ error: e.message }));\n});\n// 不等回應，但 helpers 是 async；至少 fire request\nawait Promise.allSettled(promises);\nreturn [{ json: { topics_dispatched: items.length } }];"
+        "jsCode": "// Sequential fan-out with 15s stagger — avoids Gemini free-tier RPM\nconst apiKey = $env.N8N_API_KEY;\nconst brandId = $('驗證請求').first().json.brand_id;\nconst items = $input.all();\nlet dispatched = 0;\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const topic_id = item.json.topic_id;\n  const topic_title = item.json.topic_title;\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://wing.zeabur.app/webhook/content-generation',\n      body: { api_key: apiKey, brand_id: brandId, topic_id, topic_title },\n      json: true,\n      timeout: 10000\n    });\n    dispatched++;\n  } catch (e) { /* fire-and-forget */ }\n  // 15 秒 stagger，給 Gemini 4 RPM 不會爆\n  if (i < items.length - 1) {\n    await new Promise(r => setTimeout(r, 15000));\n  }\n}\nreturn [{ json: { topics_dispatched: dispatched } }];"
       },
       "id": "a2000001-0000-0000-0000-0000000000a2",
       "name": "批次觸發產文",
@@ -786,9 +786,9 @@
   "staticData": null,
   "meta": null,
   "pinData": {},
-  "versionId": "22142786-3142-4fda-9855-809e10ecd692",
-  "activeVersionId": "22142786-3142-4fda-9855-809e10ecd692",
-  "versionCounter": 43,
+  "versionId": "302a8727-48d3-4583-ada8-44677bb75d7d",
+  "activeVersionId": "302a8727-48d3-4583-ada8-44677bb75d7d",
+  "versionCounter": 46,
   "triggerCount": 1,
   "shared": [
     {
@@ -811,9 +811,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-06-02T03:42:54.731Z",
-    "createdAt": "2026-06-02T03:42:54.731Z",
-    "versionId": "22142786-3142-4fda-9855-809e10ecd692",
+    "updatedAt": "2026-06-02T05:23:37.061Z",
+    "createdAt": "2026-06-02T05:23:37.061Z",
+    "versionId": "302a8727-48d3-4583-ada8-44677bb75d7d",
     "workflowId": "htT0ohoqmevDqXcq",
     "nodes": [
       {
@@ -1080,7 +1080,7 @@
       {
         "parameters": {
           "method": "POST",
-          "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{ $env.GEMINI_MODEL || 'gemini-2.0-flash' }}:generateContent?key={{ $env.GEMINI_API_KEY }}",
+          "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
           "sendHeaders": true,
           "headerParameters": {
             "parameters": [
@@ -1314,7 +1314,7 @@
             "value": {
               "log_id": "={{ $('驗證請求').first().json.log_id }}",
               "status": "success",
-              "message": "={{ '搜尋主題：' + ($('驗證請求').first().json.search_keyword || $('讀取品牌資料').first().json.theme || '品牌主題') + '，找到 ' + $('解析 AI 結果').all().length + ' 個，已自動產生 ' + $('解析 AI 結果').all().length + ' 篇文案' }}",
+              "message": "={{ '搜尋主題：' + ($('驗證請求').first().json.search_keyword || $('讀取品牌資料').first().json.theme || '品牌主題') + '，找到 ' + $('解析 AI 結果').all().length + ' 個。已開始依序產生 ' + $('解析 AI 結果').all().length + ' 篇文案（每篇間隔 15 秒，預計 2 分鐘完成）' }}",
               "finished_at": "={{ $now.toISO() }}",
               "subject": "={{ '搜尋主題：' + ($('驗證請求').first().json.search_keyword || $('讀取品牌資料').first().json.theme || '品牌主題') }}",
               "progress": "={{ $('解析 AI 結果').all().length + '/7' }}"
@@ -1442,7 +1442,7 @@
       },
       {
         "parameters": {
-          "jsCode": "// Fan-out: 對每個新主題觸發 content-generation webhook（fire-and-forget）\nconst apiKey = $env.N8N_API_KEY;\nconst brandId = $('驗證請求').first().json.brand_id;\nconst items = $input.all();\nconst promises = items.map(item => {\n  const topic_id = item.json.topic_id;\n  const topic_title = item.json.topic_title;\n  return this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://wing.zeabur.app/webhook/content-generation',\n    body: { api_key: apiKey, brand_id: brandId, topic_id, topic_title },\n    json: true,\n    timeout: 5000\n  }).catch(e => ({ error: e.message }));\n});\n// 不等回應，但 helpers 是 async；至少 fire request\nawait Promise.allSettled(promises);\nreturn [{ json: { topics_dispatched: items.length } }];"
+          "jsCode": "// Sequential fan-out with 15s stagger — avoids Gemini free-tier RPM\nconst apiKey = $env.N8N_API_KEY;\nconst brandId = $('驗證請求').first().json.brand_id;\nconst items = $input.all();\nlet dispatched = 0;\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const topic_id = item.json.topic_id;\n  const topic_title = item.json.topic_title;\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://wing.zeabur.app/webhook/content-generation',\n      body: { api_key: apiKey, brand_id: brandId, topic_id, topic_title },\n      json: true,\n      timeout: 10000\n    });\n    dispatched++;\n  } catch (e) { /* fire-and-forget */ }\n  // 15 秒 stagger，給 Gemini 4 RPM 不會爆\n  if (i < items.length - 1) {\n    await new Promise(r => setTimeout(r, 15000));\n  }\n}\nreturn [{ json: { topics_dispatched: dispatched } }];"
         },
         "id": "a2000001-0000-0000-0000-0000000000a2",
         "name": "批次觸發產文",
@@ -1594,18 +1594,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-06-02T03:42:54.845Z",
-        "id": 560,
+        "createdAt": "2026-06-02T05:23:37.186Z",
+        "id": 572,
         "workflowId": "htT0ohoqmevDqXcq",
-        "versionId": "22142786-3142-4fda-9855-809e10ecd692",
+        "versionId": "302a8727-48d3-4583-ada8-44677bb75d7d",
         "event": "deactivated",
         "userId": "962dcbdc-e30f-4177-8665-3119ccc1ea1f"
       },
       {
-        "createdAt": "2026-06-02T03:42:54.891Z",
-        "id": 561,
+        "createdAt": "2026-06-02T05:23:37.224Z",
+        "id": 573,
         "workflowId": "htT0ohoqmevDqXcq",
-        "versionId": "22142786-3142-4fda-9855-809e10ecd692",
+        "versionId": "302a8727-48d3-4583-ada8-44677bb75d7d",
         "event": "activated",
         "userId": "962dcbdc-e30f-4177-8665-3119ccc1ea1f"
       }

@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-02T03:42:56.293Z",
+  "updatedAt": "2026-06-02T05:23:37.982Z",
   "createdAt": "2026-06-01T08:01:58.313Z",
   "id": "1eM3agOn7NZepRaH",
   "name": "文案產生",
@@ -317,7 +317,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{ $env.GEMINI_MODEL || 'gemini-2.0-flash' }}:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -332,7 +332,7 @@
         "jsonBody": "={{ JSON.stringify({ contents: [{ role: 'user', parts: [{ text: $json.prompt }] }], generationConfig: { temperature: 0.7 } }) }}",
         "options": {
           "retry": {
-            "maxTries": 3
+            "maxTries": 4
           }
         }
       },
@@ -345,8 +345,8 @@
         300
       ],
       "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
+      "maxTries": 4,
+      "waitBetweenTries": 8000
     },
     {
       "parameters": {
@@ -1122,9 +1122,9 @@
   "staticData": null,
   "meta": null,
   "pinData": null,
-  "versionId": "447fd2a3-8d8c-4754-bacd-2a94e7fa0ada",
-  "activeVersionId": "447fd2a3-8d8c-4754-bacd-2a94e7fa0ada",
-  "versionCounter": 45,
+  "versionId": "f8dcf739-14c1-4ee6-a45e-9e56b8d2b29c",
+  "activeVersionId": "f8dcf739-14c1-4ee6-a45e-9e56b8d2b29c",
+  "versionCounter": 48,
   "triggerCount": 1,
   "shared": [
     {
@@ -1147,9 +1147,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-06-02T03:42:56.303Z",
-    "createdAt": "2026-06-02T03:42:56.303Z",
-    "versionId": "447fd2a3-8d8c-4754-bacd-2a94e7fa0ada",
+    "updatedAt": "2026-06-02T05:23:37.985Z",
+    "createdAt": "2026-06-02T05:23:37.985Z",
+    "versionId": "f8dcf739-14c1-4ee6-a45e-9e56b8d2b29c",
     "workflowId": "1eM3agOn7NZepRaH",
     "nodes": [
       {
@@ -1462,7 +1462,7 @@
       {
         "parameters": {
           "method": "POST",
-          "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{ $env.GEMINI_MODEL || 'gemini-2.0-flash' }}:generateContent?key={{ $env.GEMINI_API_KEY }}",
+          "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
           "sendHeaders": true,
           "headerParameters": {
             "parameters": [
@@ -1477,7 +1477,7 @@
           "jsonBody": "={{ JSON.stringify({ contents: [{ role: 'user', parts: [{ text: $json.prompt }] }], generationConfig: { temperature: 0.7 } }) }}",
           "options": {
             "retry": {
-              "maxTries": 3
+              "maxTries": 4
             }
           }
         },
@@ -1490,8 +1490,8 @@
           300
         ],
         "retryOnFail": true,
-        "maxTries": 3,
-        "waitBetweenTries": 2000
+        "maxTries": 4,
+        "waitBetweenTries": 8000
       },
       {
         "parameters": {
@@ -2267,18 +2267,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-06-02T03:42:56.704Z",
-        "id": 562,
+        "createdAt": "2026-06-02T05:23:38.116Z",
+        "id": 574,
         "workflowId": "1eM3agOn7NZepRaH",
-        "versionId": "447fd2a3-8d8c-4754-bacd-2a94e7fa0ada",
+        "versionId": "f8dcf739-14c1-4ee6-a45e-9e56b8d2b29c",
         "event": "deactivated",
         "userId": "962dcbdc-e30f-4177-8665-3119ccc1ea1f"
       },
       {
-        "createdAt": "2026-06-02T03:42:56.763Z",
-        "id": 563,
+        "createdAt": "2026-06-02T05:23:38.151Z",
+        "id": 575,
         "workflowId": "1eM3agOn7NZepRaH",
-        "versionId": "447fd2a3-8d8c-4754-bacd-2a94e7fa0ada",
+        "versionId": "f8dcf739-14c1-4ee6-a45e-9e56b8d2b29c",
         "event": "activated",
         "userId": "962dcbdc-e30f-4177-8665-3119ccc1ea1f"
       }
