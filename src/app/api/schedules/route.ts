@@ -54,27 +54,36 @@ function computeNextSlots(
   return result;
 }
 
-/** 把該品牌所有未排程的 draft posts 依時段填入 scheduled_time（接 IG / FB 兩篇配成一組） */
+function parseSlots(timeSlotsRaw: string): string[] {
+  try {
+    const parsed = JSON.parse(timeSlotsRaw);
+    if (Array.isArray(parsed)) return parsed.filter((s) => typeof s === "string");
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
+
+/** 把該品牌所有（或指定的）未排程 draft posts 依時段填入 scheduled_time */
 async function autoFillSchedule(
   brandId: string,
   weekdayMask: string,
-  timeSlotsRaw: string
+  timeSlotsRaw: string,
+  onlyPostIds?: string[]
 ) {
-  let slots: string[] = [];
-  try {
-    const parsed = JSON.parse(timeSlotsRaw);
-    if (Array.isArray(parsed)) slots = parsed.filter((s) => typeof s === "string");
-  } catch {
-    slots = [];
-  }
+  const slots = parseSlots(timeSlotsRaw);
   if (slots.length === 0) return { scheduled: 0 };
 
   const all = await getRowsByBrand("posts", brandId);
-  const drafts = all
+  let drafts = all
     .filter((p) => p.status === "draft" && !p.scheduled_time)
     .sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? ""));
 
-  // 同一 topic_id 的 FB / IG 兩篇用同個時段 → 先依 topic_id 分組
+  if (onlyPostIds && onlyPostIds.length > 0) {
+    const set = new Set(onlyPostIds);
+    drafts = drafts.filter((p) => set.has(p.post_id));
+  }
+
   const groups: Record<string, typeof drafts> = {};
   const order: string[] = [];
   for (const p of drafts) {
@@ -87,7 +96,6 @@ async function autoFillSchedule(
   }
 
   const times = computeNextSlots(weekdayMask, slots, order.length);
-  // 收集 post_id 與目標時間，最後做 2 個 batchUpdate（status + scheduled_time）
   const ids: string[] = [];
   const timesArr: string[] = [];
   for (let i = 0; i < order.length; i++) {
@@ -99,21 +107,90 @@ async function autoFillSchedule(
     }
   }
   if (ids.length === 0) return { scheduled: 0 };
-  await bulkUpdateColumn(
-    "posts",
-    "post_id",
-    ids,
-    "scheduled_time",
-    timesArr
-  );
-  await bulkUpdateColumn(
-    "posts",
-    "post_id",
-    ids,
-    "status",
-    ids.map(() => "scheduled")
-  );
+  await bulkUpdateColumn("posts", "post_id", ids, "scheduled_time", timesArr);
+  await bulkUpdateColumn("posts", "post_id", ids, "status", ids.map(() => "scheduled"));
   return { scheduled: ids.length };
+}
+
+/** 手動指定：每篇貼文排到指定的星期幾（一次性） */
+async function manualAssignSchedule(
+  brandId: string,
+  assignments: Record<string, number>,
+  weekdayMask: string,
+  timeSlotsRaw: string
+) {
+  const slots = parseSlots(timeSlotsRaw);
+  if (slots.length === 0) return { scheduled: 0 };
+
+  const all = await getRowsByBrand("posts", brandId);
+  const postMap = new Map(all.map((p) => [p.post_id, p]));
+  const now = new Date();
+
+  const ids: string[] = [];
+  const timesArr: string[] = [];
+
+  const byWeekday = new Map<number, string[]>();
+  for (const [postId, weekday] of Object.entries(assignments)) {
+    const post = postMap.get(postId);
+    if (!post || post.status !== "draft") continue;
+    const wd = Number(weekday);
+    if (Number.isNaN(wd) || wd < 0 || wd > 6) continue;
+    if (!byWeekday.has(wd)) byWeekday.set(wd, []);
+    byWeekday.get(wd)!.push(postId);
+  }
+
+  for (const [weekday, postIds] of byWeekday) {
+    const slotsForDay = computeNextSlotsForWeekday(weekday, slots, postIds.length, now);
+    for (let i = 0; i < postIds.length; i++) {
+      if (!slotsForDay[i]) break;
+      ids.push(postIds[i]);
+      timesArr.push(slotsForDay[i]);
+      const post = postMap.get(postIds[i]);
+      if (post?.topic_id) {
+        const paired = all.find(
+          (p) =>
+            p.topic_id === post.topic_id &&
+            p.post_id !== postIds[i] &&
+            p.status === "draft" &&
+            !ids.includes(p.post_id)
+        );
+        if (paired) {
+          ids.push(paired.post_id);
+          timesArr.push(slotsForDay[i]);
+        }
+      }
+    }
+  }
+
+  if (ids.length === 0) return { scheduled: 0 };
+  await bulkUpdateColumn("posts", "post_id", ids, "scheduled_time", timesArr);
+  await bulkUpdateColumn("posts", "post_id", ids, "status", ids.map(() => "scheduled"));
+  return { scheduled: ids.length };
+}
+
+function computeNextSlotsForWeekday(
+  weekday: number,
+  timeSlots: string[],
+  count: number,
+  now: Date
+): string[] {
+  const result: string[] = [];
+  for (let dayOffset = 0; result.length < count && dayOffset < 60; dayOffset++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + dayOffset);
+    if (d.getDay() !== weekday) continue;
+    for (const slot of timeSlots) {
+      const [hh, mm] = slot.split(":").map((n) => parseInt(n, 10));
+      if (Number.isNaN(hh) || Number.isNaN(mm)) continue;
+      const t = new Date(d);
+      t.setHours(hh, mm, 0, 0);
+      if (t.getTime() > now.getTime()) {
+        result.push(t.toISOString());
+        if (result.length >= count) break;
+      }
+    }
+  }
+  return result;
 }
 
 export async function PUT(req: NextRequest) {
@@ -181,12 +258,23 @@ export async function PUT(req: NextRequest) {
     // 若啟用自動排程，把 draft 自動填時段
     let scheduled = 0;
     if (updates.auto_publish_enabled === "true") {
-      const result = await autoFillSchedule(
-        brandId,
-        updates.weekday_mask ?? "0000000",
-        updates.time_slots ?? "[]"
-      );
-      scheduled = result.scheduled;
+      const selectedPostIds = body.selected_post_ids as string[] | undefined;
+      const assignments = body.assignments as Record<string, number> | undefined;
+      const mask = updates.weekday_mask ?? "0000000";
+      const slots = updates.time_slots ?? "[]";
+
+      if (assignments && Object.keys(assignments).length > 0) {
+        const result = await manualAssignSchedule(brandId, assignments, mask, slots);
+        scheduled = result.scheduled;
+      } else {
+        const result = await autoFillSchedule(
+          brandId,
+          mask,
+          slots,
+          selectedPostIds && selectedPostIds.length > 0 ? selectedPostIds : undefined
+        );
+        scheduled = result.scheduled;
+      }
     }
 
     await triggerWorkflow("update-schedule", {

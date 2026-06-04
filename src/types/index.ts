@@ -101,6 +101,12 @@ export interface Schedule {
   updated_at: string;
 }
 
+export interface TrendItem {
+  title: string;
+  snippet: string;
+  source_url: string;
+}
+
 export interface PipelineLog {
   log_id: string;
   brand_id: string;

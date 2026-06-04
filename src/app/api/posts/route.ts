@@ -5,6 +5,7 @@ import {
   appendRow,
   updateRow,
   getRows,
+  deleteRow,
 } from "@/lib/google-sheets";
 import { triggerWorkflow } from "@/lib/n8n";
 import { generateId, formatDate } from "@/lib/utils";
@@ -112,6 +113,25 @@ export async function POST(req: NextRequest) {
         post_id,
       });
       return NextResponse.json(result);
+    }
+
+    if (action === "delete" && post_id) {
+      const all = await getRows(
+        "posts",
+        (r) => r.brand_id === brandId && r.post_id === post_id
+      );
+      const post = all[0];
+      if (!post) {
+        return NextResponse.json({ error: "貼文不存在" }, { status: 404 });
+      }
+      if (post.status === "published") {
+        return NextResponse.json(
+          { error: "已發布的貼文不可刪除" },
+          { status: 400 }
+        );
+      }
+      const deleted = await deleteRow("posts", "post_id", post_id);
+      return NextResponse.json({ success: deleted });
     }
 
     return NextResponse.json({ error: "無效的操作" }, { status: 400 });

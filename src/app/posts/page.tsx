@@ -14,7 +14,8 @@ import {
   Textarea,
 } from "@/components/ui";
 import { OnboardingStepBar } from "@/components/onboarding-stepbar";
-import type { Post, Schedule } from "@/types";
+import { PostPreview } from "@/components/post-preview";
+import type { Post, Schedule, Brand } from "@/types";
 
 type ViewMode = "list" | "calendar";
 
@@ -88,6 +89,12 @@ export default function PostsPage() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+  const [brand, setBrand] = useState<Pick<Brand, "brand_name" | "logo_url"> | null>(null);
+  const [previewPost, setPreviewPost] = useState<Post | null>(null);
+  const [previewPlatform, setPreviewPlatform] = useState<"facebook" | "instagram">("facebook");
+  const [scheduleMode, setScheduleMode] = useState<"auto" | "manual">("auto");
+  const [selectedPostIds, setSelectedPostIds] = useState<Set<string>>(new Set());
+  const [manualAssignments, setManualAssignments] = useState<Record<string, number>>({});
 
   const fetchPosts = useCallback(() => {
     fetch("/api/posts", { cache: "no-store" })
@@ -110,10 +117,20 @@ export default function PostsPage() {
       });
   }, []);
 
+  const fetchBrand = useCallback(() => {
+    fetch("/api/brands", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.brand) setBrand({ brand_name: d.brand.brand_name, logo_url: d.brand.logo_url });
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     fetchPosts();
     fetchSchedule();
-  }, [fetchPosts, fetchSchedule]);
+    fetchBrand();
+  }, [fetchPosts, fetchSchedule, fetchBrand]);
 
   const toggleWeekday = (idx: number) => {
     const arr = weekdayMask.split("");
@@ -137,6 +154,14 @@ export default function PostsPage() {
           weekday_mask: weekdayMask,
           time_slots: timeSlots,
           auto_publish_enabled: scheduleEnabled ? "true" : "false",
+          ...(scheduleMode === "manual" && Object.keys(manualAssignments).length > 0
+            ? {
+                selected_post_ids: Array.from(selectedPostIds),
+                assignments: manualAssignments,
+              }
+            : selectedPostIds.size > 0
+            ? { selected_post_ids: Array.from(selectedPostIds) }
+            : {}),
         }),
       });
       const d = await r.json().catch(() => ({}));
@@ -181,6 +206,23 @@ export default function PostsPage() {
     } finally {
       setActingId(null);
       if (action === "update") setEditingId(null);
+    }
+  };
+
+  const handleDelete = async (postId: string) => {
+    if (!confirm("確定要刪除這篇貼文嗎？刪除後不可復原。")) return;
+    setActingId(postId);
+    try {
+      const r = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", post_id: postId }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) alert(`刪除失敗：${d.error ?? r.statusText}`);
+      else fetchPosts();
+    } finally {
+      setActingId(null);
     }
   };
 
@@ -281,6 +323,110 @@ export default function PostsPage() {
                 </button>
               </div>
             </div>
+            {/* 排程模式 */}
+            <div>
+              <div className="mb-2 text-sm font-medium text-gray-700">排程模式</div>
+              <Tabs
+                value={scheduleMode}
+                onChange={(v) => setScheduleMode(v as "auto" | "manual")}
+                options={[
+                  { value: "auto", label: "自動輪發" },
+                  { value: "manual", label: "手動指定" },
+                ]}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                {scheduleMode === "auto"
+                  ? "按順序自動把草稿填入可用時段。勾選下方貼文可只排部分文章。"
+                  : "手動指定每篇貼文要排在哪個星期幾。"}
+              </p>
+            </div>
+
+            {/* 選擇要排程的貼文 */}
+            {(() => {
+              const drafts = posts.filter(
+                (p) => p.status === "draft" && !p.scheduled_time
+              );
+              if (drafts.length === 0) return null;
+              const enabledDays = WEEKDAYS.filter((w) => weekdayMask[w.idx] === "1");
+              return (
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="text-sm font-medium text-gray-700">
+                      選擇要排程的貼文 ({selectedPostIds.size}/{drafts.length})
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (selectedPostIds.size === drafts.length) {
+                          setSelectedPostIds(new Set());
+                        } else {
+                          setSelectedPostIds(new Set(drafts.map((p) => p.post_id)));
+                        }
+                      }}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      {selectedPostIds.size === drafts.length ? "取消全選" : "全選"}
+                    </button>
+                  </div>
+                  <div className="max-h-60 space-y-1.5 overflow-y-auto">
+                    {drafts.map((p) => (
+                      <label
+                        key={p.post_id}
+                        className={`flex items-center gap-2 rounded-md border p-2 text-sm transition-colors ${
+                          selectedPostIds.has(p.post_id)
+                            ? "border-blue-300 bg-blue-50"
+                            : "border-gray-200 bg-white"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedPostIds.has(p.post_id)}
+                          onChange={(e) => {
+                            const next = new Set(selectedPostIds);
+                            if (e.target.checked) next.add(p.post_id);
+                            else {
+                              next.delete(p.post_id);
+                              const a = { ...manualAssignments };
+                              delete a[p.post_id];
+                              setManualAssignments(a);
+                            }
+                            setSelectedPostIds(next);
+                          }}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <Badge color={p.platform === "facebook" ? "blue" : "yellow"}>
+                          {p.platform === "facebook" ? "FB" : "IG"}
+                        </Badge>
+                        <span className="flex-1 truncate text-gray-700">
+                          {p.topic_title || p.caption.slice(0, 30)}
+                        </span>
+                        {scheduleMode === "manual" &&
+                          selectedPostIds.has(p.post_id) &&
+                          enabledDays.length > 0 && (
+                            <select
+                              value={manualAssignments[p.post_id] ?? ""}
+                              onChange={(e) =>
+                                setManualAssignments((prev) => ({
+                                  ...prev,
+                                  [p.post_id]: Number(e.target.value),
+                                }))
+                              }
+                              className="rounded-md border border-gray-300 px-2 py-1 text-xs"
+                            >
+                              <option value="">選擇星期</option>
+                              {enabledDays.map((w) => (
+                                <option key={w.idx} value={w.idx}>
+                                  {w.label}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             {preview && (
               <div className="rounded-md bg-blue-50 px-4 py-3 text-sm text-blue-800">
                 預覽：{preview}
@@ -291,7 +437,11 @@ export default function PostsPage() {
                 {savingSchedule ? "儲存中…" : "儲存"}
               </Button>
               <span className="self-center text-xs text-gray-500">
-                儲存後若已啟用，會把所有「未排程草稿」自動填入下一輪可用時段
+                {scheduleMode === "auto"
+                  ? selectedPostIds.size > 0
+                    ? `儲存後將為選中的 ${selectedPostIds.size} 篇草稿自動排定時間`
+                    : "儲存後會把所有「未排程草稿」自動填入下一輪可用時段"
+                  : `儲存後將依指定的星期排定 ${Object.keys(manualAssignments).length} 篇貼文`}
               </span>
             </div>
           </div>
@@ -375,9 +525,29 @@ export default function PostsPage() {
               onSaveEdit={() =>
                 handleAction(p.post_id, "update", { caption: editingCaption })
               }
+              onDelete={() => handleDelete(p.post_id)}
+              onPreview={() => {
+                setPreviewPost(p);
+                setPreviewPlatform(
+                  p.platform === "instagram" ? "instagram" : "facebook"
+                );
+              }}
             />
           ))}
         </div>
+      )}
+
+      {/* FB/IG 預覽 Modal */}
+      {previewPost && brand && (
+        <PostPreview
+          brandName={brand.brand_name}
+          logoUrl={brand.logo_url}
+          caption={previewPost.caption}
+          imageUrl={previewPost.image_url}
+          platform={previewPlatform}
+          onPlatformChange={setPreviewPlatform}
+          onClose={() => setPreviewPost(null)}
+        />
       )}
     </div>
   );
@@ -393,6 +563,8 @@ function PostCard({
   onRegenerate,
   onPublish,
   onSaveEdit,
+  onDelete,
+  onPreview,
   busy,
 }: {
   post: Post;
@@ -404,6 +576,8 @@ function PostCard({
   onRegenerate: () => void;
   onPublish: () => void;
   onSaveEdit: () => void;
+  onDelete: () => void;
+  onPreview: () => void;
   busy: boolean;
 }) {
   const isPublished = post.status === "published";
@@ -487,6 +661,19 @@ function PostCard({
             >
               編輯
             </Button>
+            <Button size="sm" variant="ghost" onClick={onPreview}>
+              預覽
+            </Button>
+            {!isPublished && (
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={onDelete}
+                disabled={busy}
+              >
+                刪除
+              </Button>
+            )}
           </>
         )}
         {(post.fb_post_id || post.ig_post_id) && (

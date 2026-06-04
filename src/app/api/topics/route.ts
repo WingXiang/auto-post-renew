@@ -49,13 +49,14 @@ export async function POST(req: NextRequest) {
         "archived_at",
         toArchive.map(() => now)
       );
-      // 2) 把使用者的搜尋條件全部轉發給 n8n
+      // 2) 把使用者的搜尋條件 + 趨勢全部轉發給 n8n
       const result = await triggerWorkflow("topic-discovery", {
         brand_id: brandId,
         search_keyword: body.keyword ?? "",
         content_type: body.content_type ?? "",
         target_reader: body.target_reader ?? "",
         recency_days: body.recency_days ?? "",
+        trends: body.trends ? JSON.stringify(body.trends) : "",
       });
       return NextResponse.json({ ...result, archived });
     }

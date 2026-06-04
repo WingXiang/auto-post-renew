@@ -26,7 +26,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) throw new Error('Unauthorized');\nconst body = $input.first().json.body;\nif (!body.brand_id) throw new Error('Missing brand_id');\nreturn [{\n  json: {\n    brand_id: body.brand_id,\n    search_keyword: body.search_keyword || '',\n    content_type: body.content_type || '',\n    target_reader: body.target_reader || '',\n    recency_days: body.recency_days || '',\n    log_id: 'td-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+        "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) throw new Error('Unauthorized');\nconst body = $input.first().json.body;\nif (!body.brand_id) throw new Error('Missing brand_id');\nreturn [{\n  json: {\n    brand_id: body.brand_id,\n    search_keyword: body.search_keyword || '',\n    content_type: body.content_type || '',\n    target_reader: body.target_reader || '',\n    recency_days: body.recency_days || '',\n    trends: body.trends || '',\n    log_id: 'td-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
       },
       "id": "a2000001-0000-0000-0000-000000000002",
       "name": "驗證請求",
@@ -283,7 +283,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  systemInstruction: { parts: [{ text: \"你是社群媒體內容策略專家。根據品牌資訊與搜尋結果，挑出最多 7 個與品牌最相關的主題，依 relevance_score 由高到低排序。回傳純 JSON 陣列（不要 markdown 包裹），每個項目包含：topic_title（繁體中文標題，吸睛短句）、source_url、relevance_score（0-100 整數）、brand_relevance（一句話說明此主題與此品牌為何相關）、suggested_angles（建議的 3 種撰寫角度，用 \\\"、\\\" 分隔）、content_type（從這些選一個：教學/案例分享/觀點/工具評測/趨勢）。只回傳 relevance_score >= 50 的主題。\" }] },\n  contents: [{ role: 'user', parts: [{ text: `品牌資訊：\\n品牌名稱：${$('讀取品牌資料').first().json.brand_name || ''}\\n主題：${$('讀取品牌資料').first().json.theme || ''}\\n目標受眾：${$('讀取品牌資料').first().json.target_audience || ''}\\n\\n使用者偏好（若有）：\\n關鍵字：${$('驗證請求').first().json.search_keyword || '無'}\\n內容類型：${$('驗證請求').first().json.content_type || '不限'}\\n目標讀者：${$('驗證請求').first().json.target_reader || '不限'}\\n\\n搜尋結果：\\n${JSON.stringify($json.results.map(r => ({ title: r.title, url: r.link, snippet: r.snippet })))}` }] }],\n  generationConfig: { temperature: 0.3 }\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  systemInstruction: { parts: [{ text: \"你是社群媒體內容策略專家。根據品牌資訊與搜尋結果，挑出最多 7 個與品牌最相關的主題，依 relevance_score 由高到低排序。回傳純 JSON 陣列（不要 markdown 包裹），每個項目包含：topic_title（繁體中文標題，吸睛短句）、source_url、relevance_score（0-100 整數）、brand_relevance（一句話說明此主題與此品牌為何相關）、suggested_angles（建議的 3 種撰寫角度，用 \\\"、\\\" 分隔）、content_type（從這些選一個：教學/案例分享/觀點/工具評測/趨勢）。只回傳 relevance_score >= 50 的主題。\" }] },\n  contents: [{ role: 'user', parts: [{ text: `品牌資訊：\\n品牌名稱：${$('讀取品牌資料').first().json.brand_name || ''}\\n主題：${$('讀取品牌資料').first().json.theme || ''}\\n目標受眾：${$('讀取品牌資料').first().json.target_audience || ''}\\n\\n使用者偏好（若有）：\\n關鍵字：${$('驗證請求').first().json.search_keyword || '無'}\\n內容類型：${$('驗證請求').first().json.content_type || '不限'}\\n目標讀者：${$('驗證請求').first().json.target_reader || '不限'}\\n\\n搜尋結果：\\n${JSON.stringify($json.results.map(r => ({ title: r.title, url: r.link, snippet: r.snippet })))}${$('驗證請求').first().json.trends ? '\\n\\n近期社群趨勢（請考量這些趨勢與品牌的關聯性，優先推薦與趨勢吻合的主題）：\\n' + $('驗證請求').first().json.trends : ''}` }] }],\n  generationConfig: { temperature: 0.3 }\n}) }}",
         "options": {
           "retry": {
             "maxTries": 3
@@ -908,7 +908,7 @@
       },
       {
         "parameters": {
-          "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) throw new Error('Unauthorized');\nconst body = $input.first().json.body;\nif (!body.brand_id) throw new Error('Missing brand_id');\nreturn [{\n  json: {\n    brand_id: body.brand_id,\n    search_keyword: body.search_keyword || '',\n    content_type: body.content_type || '',\n    target_reader: body.target_reader || '',\n    recency_days: body.recency_days || '',\n    log_id: 'td-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+          "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) throw new Error('Unauthorized');\nconst body = $input.first().json.body;\nif (!body.brand_id) throw new Error('Missing brand_id');\nreturn [{\n  json: {\n    brand_id: body.brand_id,\n    search_keyword: body.search_keyword || '',\n    content_type: body.content_type || '',\n    target_reader: body.target_reader || '',\n    recency_days: body.recency_days || '',\n    trends: body.trends || '',\n    log_id: 'td-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
         },
         "id": "a2000001-0000-0000-0000-000000000002",
         "name": "驗證請求",
@@ -1165,7 +1165,7 @@
           },
           "sendBody": true,
           "specifyBody": "json",
-          "jsonBody": "={{ JSON.stringify({\n  systemInstruction: { parts: [{ text: \"你是社群媒體內容策略專家。根據品牌資訊與搜尋結果，挑出最多 7 個與品牌最相關的主題，依 relevance_score 由高到低排序。回傳純 JSON 陣列（不要 markdown 包裹），每個項目包含：topic_title（繁體中文標題，吸睛短句）、source_url、relevance_score（0-100 整數）、brand_relevance（一句話說明此主題與此品牌為何相關）、suggested_angles（建議的 3 種撰寫角度，用 \\\"、\\\" 分隔）、content_type（從這些選一個：教學/案例分享/觀點/工具評測/趨勢）。只回傳 relevance_score >= 50 的主題。\" }] },\n  contents: [{ role: 'user', parts: [{ text: `品牌資訊：\\n品牌名稱：${$('讀取品牌資料').first().json.brand_name || ''}\\n主題：${$('讀取品牌資料').first().json.theme || ''}\\n目標受眾：${$('讀取品牌資料').first().json.target_audience || ''}\\n\\n使用者偏好（若有）：\\n關鍵字：${$('驗證請求').first().json.search_keyword || '無'}\\n內容類型：${$('驗證請求').first().json.content_type || '不限'}\\n目標讀者：${$('驗證請求').first().json.target_reader || '不限'}\\n\\n搜尋結果：\\n${JSON.stringify($json.results.map(r => ({ title: r.title, url: r.link, snippet: r.snippet })))}` }] }],\n  generationConfig: { temperature: 0.3 }\n}) }}",
+          "jsonBody": "={{ JSON.stringify({\n  systemInstruction: { parts: [{ text: \"你是社群媒體內容策略專家。根據品牌資訊與搜尋結果，挑出最多 7 個與品牌最相關的主題，依 relevance_score 由高到低排序。回傳純 JSON 陣列（不要 markdown 包裹），每個項目包含：topic_title（繁體中文標題，吸睛短句）、source_url、relevance_score（0-100 整數）、brand_relevance（一句話說明此主題與此品牌為何相關）、suggested_angles（建議的 3 種撰寫角度，用 \\\"、\\\" 分隔）、content_type（從這些選一個：教學/案例分享/觀點/工具評測/趨勢）。只回傳 relevance_score >= 50 的主題。\" }] },\n  contents: [{ role: 'user', parts: [{ text: `品牌資訊：\\n品牌名稱：${$('讀取品牌資料').first().json.brand_name || ''}\\n主題：${$('讀取品牌資料').first().json.theme || ''}\\n目標受眾：${$('讀取品牌資料').first().json.target_audience || ''}\\n\\n使用者偏好（若有）：\\n關鍵字：${$('驗證請求').first().json.search_keyword || '無'}\\n內容類型：${$('驗證請求').first().json.content_type || '不限'}\\n目標讀者：${$('驗證請求').first().json.target_reader || '不限'}\\n\\n搜尋結果：\\n${JSON.stringify($json.results.map(r => ({ title: r.title, url: r.link, snippet: r.snippet })))}${$('驗證請求').first().json.trends ? '\\n\\n近期社群趨勢（請考量這些趨勢與品牌的關聯性，優先推薦與趨勢吻合的主題）：\\n' + $('驗證請求').first().json.trends : ''}` }] }],\n  generationConfig: { temperature: 0.3 }\n}) }}",
           "options": {
             "retry": {
               "maxTries": 3

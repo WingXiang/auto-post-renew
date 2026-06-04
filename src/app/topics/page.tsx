@@ -15,7 +15,7 @@ import {
   ViewToggle,
 } from "@/components/ui";
 import { OnboardingStepBar } from "@/components/onboarding-stepbar";
-import type { Topic } from "@/types";
+import type { Topic, TrendItem } from "@/types";
 
 const CONTENT_TYPES = ["", "教學", "案例分享", "觀點", "工具評測", "趨勢"];
 const READERS = ["", "新手", "進階", "決策者"];
@@ -34,6 +34,11 @@ export default function TopicsPage() {
   const [includeArchived, setIncludeArchived] = useState(false);
   const [view, setView] = useState<"card" | "list">("card");
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  // Trend search state
+  const [trends, setTrends] = useState<TrendItem[]>([]);
+  const [selectedTrends, setSelectedTrends] = useState<Set<number>>(new Set());
+  const [searchingTrends, setSearchingTrends] = useState(false);
 
   // Search form state
   const [keyword, setKeyword] = useState("");
@@ -56,8 +61,39 @@ export default function TopicsPage() {
     fetchTopics();
   }, [fetchTopics]);
 
+  const handleSearchTrends = async () => {
+    setSearchingTrends(true);
+    try {
+      const r = await fetch("/api/trends", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        alert(`趨勢搜尋失敗：${d.error ?? r.statusText}`);
+        return;
+      }
+      const items: TrendItem[] = d.trends ?? [];
+      setTrends(items);
+      setSelectedTrends(new Set(items.map((_, i) => i)));
+    } finally {
+      setSearchingTrends(false);
+    }
+  };
+
+  const toggleTrend = (idx: number) => {
+    setSelectedTrends((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
   const handleDiscover = async () => {
     setDiscovering(true);
+    const selectedTrendItems = trends.filter((_, i) => selectedTrends.has(i));
     try {
       const r = await fetch("/api/topics", {
         method: "POST",
@@ -68,6 +104,7 @@ export default function TopicsPage() {
           content_type: contentType,
           target_reader: targetReader,
           recency_days: recencyDays,
+          trends: selectedTrendItems.length > 0 ? selectedTrendItems : undefined,
         }),
       });
       if (!r.ok) {
@@ -123,8 +160,65 @@ export default function TopicsPage() {
 
       {showSearch && (
         <Card className="mb-6">
+          {/* Step 1: 趨勢搜尋 */}
+          <div className="mb-4 border-b border-gray-100 pb-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">
+                Step 1：探索近期社群趨勢（可選）
+              </h3>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleSearchTrends}
+                disabled={searchingTrends}
+              >
+                {searchingTrends ? "搜尋中…" : "🔥 搜尋近期趨勢"}
+              </Button>
+            </div>
+            {trends.length > 0 && (
+              <div className="space-y-2">
+                {trends.map((t, i) => (
+                  <label
+                    key={i}
+                    className={`flex cursor-pointer items-start gap-2 rounded-md border p-3 transition-colors ${
+                      selectedTrends.has(i)
+                        ? "border-blue-300 bg-blue-50"
+                        : "border-gray-200 bg-white hover:bg-gray-50"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedTrends.has(i)}
+                      onChange={() => toggleTrend(i)}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-gray-900 line-clamp-1">
+                        {t.title}
+                      </div>
+                      {t.snippet && (
+                        <div className="mt-0.5 text-xs text-gray-500 line-clamp-2">
+                          {t.snippet}
+                        </div>
+                      )}
+                    </div>
+                  </label>
+                ))}
+                <div className="text-xs text-gray-500">
+                  已選 {selectedTrends.size} 個趨勢，將與下方關鍵字合併搜尋
+                </div>
+              </div>
+            )}
+            {trends.length === 0 && (
+              <p className="text-xs text-gray-500">
+                點「搜尋近期趨勢」讓 AI 參考社群熱門話題來找主題。也可以跳過，直接填關鍵字搜尋。
+              </p>
+            )}
+          </div>
+
+          {/* Step 2: 關鍵字搜尋 */}
           <h3 className="mb-3 text-sm font-semibold text-gray-900">
-            告訴 AI 你想找什麼樣的主題
+            Step 2：告訴 AI 你想找什麼樣的主題
           </h3>
           <div className="grid gap-3 md:grid-cols-2">
             <Input
