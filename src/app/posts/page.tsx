@@ -95,6 +95,7 @@ export default function PostsPage() {
   const [scheduleMode, setScheduleMode] = useState<"auto" | "manual">("auto");
   const [selectedPostIds, setSelectedPostIds] = useState<Set<string>>(new Set());
   const [manualAssignments, setManualAssignments] = useState<Record<string, number>>({});
+  const [toast, setToast] = useState<{ type: "info" | "error"; msg: string } | null>(null);
 
   const fetchPosts = useCallback(() => {
     fetch("/api/posts", { cache: "no-store" })
@@ -166,12 +167,12 @@ export default function PostsPage() {
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) {
-        alert(`儲存失敗：${d.error ?? r.statusText}`);
+        setToast({ type: "error", msg: `儲存失敗：${d.error ?? r.statusText}` });
       } else {
         if (d.auto_scheduled > 0) {
-          alert(`儲存成功，已自動為 ${d.auto_scheduled} 篇貼文排定發佈時間。`);
+          setToast({ type: "info", msg: `儲存成功，已自動為 ${d.auto_scheduled} 篇貼文排定發佈時間。` });
         } else {
-          alert("儲存成功。");
+          setToast({ type: "info", msg: "儲存成功。" });
         }
         fetchPosts();
         fetchSchedule();
@@ -196,10 +197,10 @@ export default function PostsPage() {
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) {
-        alert(`${action} 失敗：${d.error ?? r.statusText}`);
+        setToast({ type: "error", msg: `${action} 失敗：${d.error ?? r.statusText}` });
       } else {
         if (action === "regenerate") {
-          alert("已開始重新生成，約需 30-60 秒。請看左下角執行進度。");
+          setToast({ type: "info", msg: "已開始重新生成，約需 30-60 秒。請看左下角執行進度。" });
         }
         await fetchPosts();
       }
@@ -219,7 +220,7 @@ export default function PostsPage() {
         body: JSON.stringify({ action: "delete", post_id: postId }),
       });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) alert(`刪除失敗：${d.error ?? r.statusText}`);
+      if (!r.ok) setToast({ type: "error", msg: `刪除失敗：${d.error ?? r.statusText}` });
       else fetchPosts();
     } finally {
       setActingId(null);
@@ -446,6 +447,25 @@ export default function PostsPage() {
             </div>
           </div>
         </Card>
+      )}
+
+      {/* Toast / banner */}
+      {toast && (
+        <div
+          className={`mb-4 flex items-center justify-between rounded-md px-4 py-3 text-sm ${
+            toast.type === "error"
+              ? "bg-red-50 text-red-800"
+              : "bg-blue-50 text-blue-800"
+          }`}
+        >
+          <span>{toast.msg}</span>
+          <button
+            onClick={() => setToast(null)}
+            className="ml-3 text-xs font-semibold hover:underline"
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       {/* 篩選列 */}

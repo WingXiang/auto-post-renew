@@ -40,6 +40,9 @@ export default function TopicsPage() {
   const [selectedTrends, setSelectedTrends] = useState<Set<number>>(new Set());
   const [searchingTrends, setSearchingTrends] = useState(false);
 
+  // Toast / banner messages (non-blocking replacement for alert())
+  const [toast, setToast] = useState<{ type: "info" | "error"; msg: string } | null>(null);
+
   // Search form state
   const [keyword, setKeyword] = useState("");
   const [contentType, setContentType] = useState("");
@@ -71,7 +74,7 @@ export default function TopicsPage() {
       });
       const d = await r.json();
       if (!r.ok) {
-        alert(`趨勢搜尋失敗：${d.error ?? r.statusText}`);
+        setToast({ type: "error", msg: `趨勢搜尋失敗：${d.error ?? r.statusText}` });
         return;
       }
       const items: TrendItem[] = d.trends ?? [];
@@ -109,14 +112,12 @@ export default function TopicsPage() {
       });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
-        alert(`搜尋失敗：${d.error ?? r.statusText}`);
+        setToast({ type: "error", msg: `搜尋失敗：${d.error ?? r.statusText}` });
         return;
       }
       setShowSearch(false);
-      // 提示使用者：搜尋是 fire-and-forget；給 60s 後再 refresh
-      alert(
-        "搜尋已啟動。AI 正在搜尋主題並產生 7 篇貼文，約需 2-3 分鐘。\n\n你可以在左下角「執行進度」看處理狀況，完成後回來重新整理頁面。"
-      );
+      // 提示使用者：搜尋是 fire-and-forget
+      setToast({ type: "info", msg: "搜尋已啟動。AI 正在搜尋主題並產生 7 篇貼文，約需 2-3 分鐘。完成後主題會自動出現。" });
       // poll until 7 new topics appear or 4 minutes
       const start = Date.now();
       const poll = async () => {
@@ -270,6 +271,25 @@ export default function TopicsPage() {
             </span>
           </div>
         </Card>
+      )}
+
+      {/* Toast / banner */}
+      {toast && (
+        <div
+          className={`mb-4 flex items-center justify-between rounded-md px-4 py-3 text-sm ${
+            toast.type === "error"
+              ? "bg-red-50 text-red-800"
+              : "bg-blue-50 text-blue-800"
+          }`}
+        >
+          <span>{toast.msg}</span>
+          <button
+            onClick={() => setToast(null)}
+            className="ml-3 text-xs font-semibold hover:underline"
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
