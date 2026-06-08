@@ -1,0 +1,6022 @@
+{
+  "name": "AutoPost 全流程（All-in-One）",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 1. 品牌初始化\n**Webhook 路徑：** `/brand-setup`\n\n建立 / 更新品牌資料（名稱、主題、語氣、FB/IG 帳號）",
+        "height": 920,
+        "width": 2020,
+        "color": 5
+      },
+      "id": "sticky-section-1",
+      "name": "區段 1：品牌初始化",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        260,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "brand-setup",
+        "options": {
+          "rawBody": false
+        },
+        "responseMode": "responseNode"
+      },
+      "id": "w1-a1000001-0000-0000-0000-000000000001",
+      "name": "1·Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        360,
+        250
+      ],
+      "webhookId": "brand-setup"
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) {\n  throw new Error('Unauthorized');\n}\nconst { brand_id, brand_name } = $input.first().json.body;\n\nif (!brand_id || !brand_name) {\n  throw new Error('Missing required fields: brand_id, brand_name');\n}\n\nreturn [{\n  json: {\n    brand_id,\n    brand_name,\n    log_id: $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+      },
+      "id": "w1-a1000001-0000-0000-0000-000000000002",
+      "name": "1·驗證請求",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ 'bs-' + $json.log_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "workflow_name": "brand-setup",
+            "status": "running",
+            "message": "品牌初始化中...",
+            "started_at": "={{ $json.started_at }}",
+            "finished_at": ""
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w1-a1000001-0000-0000-0000-000000000003",
+      "name": "1·記錄開始",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        800,
+        250
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1265514779",
+          "cachedResultName": "brands"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "brand_id",
+              "lookupValue": "={{ $('1·驗證請求').first().json.brand_id }}"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w1-a1000001-0000-0000-0000-000000000004",
+      "name": "1·讀取品牌資料",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1020,
+        250
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const brand = $input.first().json;\nconst brandId = $('1·驗證請求').first().json.brand_id;\nconst brandName = $('1·驗證請求').first().json.brand_name;\n\n// 產生預設品牌設定建議\nconst setupSummary = {\n  brand_id: brandId,\n  brand_name: brandName,\n  defaults_applied: {\n    theme: brand.theme || '待設定',\n    style: brand.style || '專業且親切',\n    tone: brand.tone || '友善、專業',\n    target_audience: brand.target_audience || '待設定',\n  },\n  message: `品牌 \"${brandName}\" 已成功建立。請前往品牌設定頁面完善資料。`\n};\n\nreturn [{ json: setupSummary }];"
+      },
+      "id": "w1-a1000001-0000-0000-0000-000000000005",
+      "name": "1·處理品牌設定",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ 'bs-' + $('1·驗證請求').first().json.log_id }}",
+            "status": "success",
+            "message": "={{ $json.message }}",
+            "finished_at": "={{ $now.toISO() }}"
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        },
+        "authentication": "serviceAccount"
+      },
+      "id": "w1-a1000001-0000-0000-0000-000000000006",
+      "name": "1·記錄完成",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1460,
+        250
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: $json }) }}"
+      },
+      "id": "w1-a1000001-0000-0000-0000-000000000007",
+      "name": "1·回應成功",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1680,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. 主題探索\n**Webhook 路徑：** `/topic-discovery`\n\nSerper 搜尋趨勢 + 主題 → AI 評估相關性 → 寫入 topics",
+        "height": 920,
+        "width": 3120,
+        "color": 4
+      },
+      "id": "sticky-section-2",
+      "name": "區段 2：主題探索",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        260,
+        1080
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "topic-discovery",
+        "options": {},
+        "responseMode": "responseNode"
+      },
+      "id": "w2-a2000001-0000-0000-0000-000000000001",
+      "name": "2·Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        360,
+        1350
+      ],
+      "webhookId": "topic-discovery"
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) throw new Error('Unauthorized');\nconst body = $input.first().json.body;\nif (!body.brand_id) throw new Error('Missing brand_id');\nreturn [{\n  json: {\n    brand_id: body.brand_id,\n    search_keyword: body.search_keyword || '',\n    content_type: body.content_type || '',\n    target_reader: body.target_reader || '',\n    recency_days: body.recency_days || '',\n    trends: body.trends || '',\n    log_id: 'td-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+      },
+      "id": "w2-a2000001-0000-0000-0000-000000000002",
+      "name": "2·驗證請求",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        1350
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $json.log_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "workflow_name": "topic-discovery",
+            "status": "running",
+            "message": "搜尋熱門主題中...",
+            "started_at": "={{ $json.started_at }}",
+            "finished_at": "",
+            "subject": "={{ '搜尋主題：' + ($('2·驗證請求').first().json.search_keyword || '品牌主題') }}",
+            "progress": "0/7"
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "progress",
+              "displayName": "progress",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w2-a2000001-0000-0000-0000-000000000003",
+      "name": "2·記錄開始",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        800,
+        1350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1265514779",
+          "cachedResultName": "brands"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "brand_id",
+              "lookupValue": "={{ $('2·驗證請求').first().json.brand_id }}"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w2-a2000001-0000-0000-0000-000000000004",
+      "name": "2·讀取品牌資料",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1020,
+        1350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const brand = $input.first().json;\nconst req = $('2·驗證請求').first().json;\nconst keyword = (req.search_keyword || '').trim();\nconst theme = brand.theme || '社群行銷';\nconst audience = brand.target_audience || '一般消費者';\nconst year = new Date().getFullYear();\nlet queries;\nif (keyword) {\n  // 使用者明確指定關鍵字：擴成 3 個變體\n  queries = [\n    keyword,\n    `${keyword} ${year}`,\n    `${keyword} ${audience}`\n  ];\n} else {\n  queries = [\n    `${theme} 趨勢 ${year}`,\n    `${theme} ${audience} 熱門話題`,\n    `${brand.brand_name || ''} 產業 最新消息`\n  ].filter(Boolean);\n}\n// recency → tbs\nconst days = parseInt(req.recency_days, 10);\nlet tbs = '';\nif (days === 7) tbs = 'qdr:w';\nelse if (days === 30) tbs = 'qdr:m';\nelse if (days === 90) tbs = 'qdr:m3';\nreturn queries.map(q => ({ json: { query: q, brand, tbs } }));"
+      },
+      "id": "w2-a2000001-0000-0000-0000-000000000005",
+      "name": "2·組合搜尋關鍵字",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        1350
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://google.serper.dev/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.SERPER_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ q: $json.query, gl: 'tw', hl: 'zh-TW', num: 10, ...($json.tbs ? { tbs: $json.tbs } : {}) }) }}",
+        "options": {}
+      },
+      "id": "w2-a2000001-0000-0000-0000-000000000006",
+      "name": "2·Serper 搜尋",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1460,
+        1350
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 彙整所有搜尋結果\nconst allResults = [];\n\nfor (const item of $input.all()) {\n  const organic = item.json.organic || [];\n  for (const result of organic) {\n    allResults.push({\n      title: result.title,\n      link: result.link,\n      snippet: result.snippet || ''\n    });\n  }\n}\n\n// 去重（依 link）\nconst seen = new Set();\nconst unique = allResults.filter(r => {\n  if (seen.has(r.link)) return false;\n  seen.add(r.link);\n  return true;\n}).slice(0, 20);\n\nreturn [{\n  json: {\n    results: unique,\n    brand_id: $('2·驗證請求').first().json.brand_id,\n    count: unique.length\n  }\n}];"
+      },
+      "id": "w2-a2000001-0000-0000-0000-000000000007",
+      "name": "2·彙整搜尋結果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        1350
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  systemInstruction: { parts: [{ text: \"你是社群媒體內容策略專家。根據品牌資訊與搜尋結果，挑出最多 7 個與品牌最相關的主題，依 relevance_score 由高到低排序。回傳純 JSON 陣列（不要 markdown 包裹），每個項目包含：topic_title（繁體中文標題，吸睛短句）、source_url、relevance_score（0-100 整數）、brand_relevance（一句話說明此主題與此品牌為何相關）、suggested_angles（建議的 3 種撰寫角度，用 \\\"、\\\" 分隔）、content_type（從這些選一個：教學/案例分享/觀點/工具評測/趨勢）。只回傳 relevance_score >= 50 的主題。\" }] },\n  contents: [{ role: 'user', parts: [{ text: `品牌資訊：\\n品牌名稱：${$('2·讀取品牌資料').first().json.brand_name || ''}\\n主題：${$('2·讀取品牌資料').first().json.theme || ''}\\n目標受眾：${$('2·讀取品牌資料').first().json.target_audience || ''}\\n\\n使用者偏好（若有）：\\n關鍵字：${$('2·驗證請求').first().json.search_keyword || '無'}\\n內容類型：${$('2·驗證請求').first().json.content_type || '不限'}\\n目標讀者：${$('2·驗證請求').first().json.target_reader || '不限'}\\n\\n搜尋結果：\\n${JSON.stringify($json.results.map(r => ({ title: r.title, url: r.link, snippet: r.snippet })))}${$('2·驗證請求').first().json.trends ? '\\n\\n近期社群趨勢（請考量這些趨勢與品牌的關聯性，優先推薦與趨勢吻合的主題）：\\n' + $('2·驗證請求').first().json.trends : ''}` }] }],\n  generationConfig: { temperature: 0.3 }\n}) }}",
+        "options": {
+          "retry": {
+            "maxTries": 3
+          }
+        }
+      },
+      "id": "w2-a2000001-0000-0000-0000-000000000008",
+      "name": "2·AI 評估相關性",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1900,
+        1350
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $('2·驗證請求').first().json;\nconst brandId = req.brand_id;\nconst response = $input.first().json;\nconst content = response.candidates?.[0]?.content?.parts?.[0]?.text || '[]';\nlet topics;\ntry {\n  const cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  topics = JSON.parse(cleaned);\n} catch (e) {\n  topics = [];\n}\n// 最多 7 個\ntopics = topics.slice(0, 7);\nconst now = new Date().toISOString();\nreturn topics.map((t, i) => ({\n  json: {\n    topic_id: `topic-${Date.now()}-${i}`,\n    brand_id: brandId,\n    topic_title: t.topic_title || t.title || '',\n    source_url: t.source_url || t.url || '',\n    relevance_score: String(t.relevance_score || 0),\n    status: 'pending',\n    brand_relevance: t.brand_relevance || '',\n    suggested_angles: t.suggested_angles || '',\n    content_type: t.content_type || req.content_type || '',\n    target_reader: req.target_reader || '',\n    search_keyword: req.search_keyword || '',\n    archived_at: '',\n    created_at: now\n  }\n}));"
+      },
+      "id": "w2-a2000001-0000-0000-0000-000000000009",
+      "name": "2·解析 AI 結果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2120,
+        1350
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1432193145",
+          "cachedResultName": "topics"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "topic_id": "={{ $json.topic_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "topic_title": "={{ $json.topic_title }}",
+            "source_url": "={{ $json.source_url }}",
+            "relevance_score": "={{ $json.relevance_score }}",
+            "status": "={{ $json.status }}",
+            "created_at": "={{ $json.created_at }}",
+            "brand_relevance": "={{ $json.brand_relevance }}",
+            "suggested_angles": "={{ $json.suggested_angles }}",
+            "content_type": "={{ $json.content_type }}",
+            "target_reader": "={{ $json.target_reader }}",
+            "search_keyword": "={{ $json.search_keyword }}",
+            "archived_at": "={{ $json.archived_at }}"
+          },
+          "schema": [
+            {
+              "id": "topic_id",
+              "displayName": "topic_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "topic_title",
+              "displayName": "topic_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source_url",
+              "displayName": "source_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "relevance_score",
+              "displayName": "relevance_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_relevance",
+              "displayName": "brand_relevance",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "suggested_angles",
+              "displayName": "suggested_angles",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "content_type",
+              "displayName": "content_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "target_reader",
+              "displayName": "target_reader",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "search_keyword",
+              "displayName": "search_keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "archived_at",
+              "displayName": "archived_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w2-a2000001-0000-0000-0000-000000000010",
+      "name": "2·寫入主題",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2340,
+        1350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $('2·驗證請求').first().json.log_id }}",
+            "status": "success",
+            "message": "={{ '搜尋主題：' + ($('2·驗證請求').first().json.search_keyword || $('2·讀取品牌資料').first().json.theme || '品牌主題') + '，找到 ' + $('2·解析 AI 結果').all().length + ' 個。已開始依序產生 ' + $('2·解析 AI 結果').all().length + ' 篇文案（每篇間隔 15 秒，預計 2 分鐘完成）' }}",
+            "finished_at": "={{ $now.toISO() }}",
+            "subject": "={{ '搜尋主題：' + ($('2·驗證請求').first().json.search_keyword || $('2·讀取品牌資料').first().json.theme || '品牌主題') }}",
+            "progress": "={{ $('2·解析 AI 結果').all().length + '/7' }}"
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "progress",
+              "displayName": "progress",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w2-a2000001-0000-0000-0000-000000000011",
+      "name": "2·記錄完成",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2560,
+        1350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { topics_found: $('2·解析 AI 結果').all().length } }) }}"
+      },
+      "id": "w2-a2000001-0000-0000-0000-000000000012",
+      "name": "2·回應成功",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2780,
+        1350
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sequential fan-out with 15s stagger — avoids Gemini free-tier RPM\nconst apiKey = $env.N8N_API_KEY;\nconst brandId = $('2·驗證請求').first().json.brand_id;\nconst items = $input.all();\nlet dispatched = 0;\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const topic_id = item.json.topic_id;\n  const topic_title = item.json.topic_title;\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://wing.zeabur.app/webhook/content-generation',\n      body: { api_key: apiKey, brand_id: brandId, topic_id, topic_title },\n      json: true,\n      timeout: 10000\n    });\n    dispatched++;\n  } catch (e) { /* fire-and-forget */ }\n  // 15 秒 stagger，給 Gemini 4 RPM 不會爆\n  if (i < items.length - 1) {\n    await new Promise(r => setTimeout(r, 15000));\n  }\n}\nreturn [{ json: { topics_dispatched: dispatched } }];"
+      },
+      "id": "w2-a2000001-0000-0000-0000-0000000000a2",
+      "name": "2·批次觸發產文",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2560,
+        1250
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "mock-check",
+              "leftValue": "={{ $env.MOCK_GEMINI }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "w2-a2000001-0000-0000-0000-00000000mif",
+      "name": "2·是否 MOCK_GEMINI？",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1820,
+        1350
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// MOCK MODE：回傳假 AI 結果，模擬 Gemini 回應格式\nconst MOCK_TOPICS = [{\"topic_title\": \"【測試】2026 一人公司 AI 自動化必備工具清單\", \"source_url\": \"https://example.com/mock/tools\", \"relevance_score\": 98, \"brand_relevance\": \"直接命中品牌目標受眾「想用 AI 自動化的個人創業者」核心需求\", \"suggested_angles\": \"依預算分級的工具推薦、個人實測心得、新手避雷指南\", \"content_type\": \"工具評測\"}, {\"topic_title\": \"【測試】從零開始：個人創業者的 AI 自動化流程拆解\", \"source_url\": \"https://example.com/mock/workflow\", \"relevance_score\": 96, \"brand_relevance\": \"新手友善內容，可擴大潛在受眾\", \"suggested_angles\": \"5 步驟流程圖、真實案例追蹤、常見卡關點\", \"content_type\": \"教學\"}, {\"topic_title\": \"【測試】一人公司年營收破千萬：他靠這 3 個 AI 自動化做到\", \"source_url\": \"https://example.com/mock/case\", \"relevance_score\": 94, \"brand_relevance\": \"成功案例最容易引發共鳴與分享\", \"suggested_angles\": \"數字背後的決策、可複製的 SOP、心態調整\", \"content_type\": \"案例分享\"}, {\"topic_title\": \"【測試】別再迷信『AI 取代人類』— 一人公司真正該追的是什麼\", \"source_url\": \"https://example.com/mock/opinion\", \"relevance_score\": 88, \"brand_relevance\": \"建立品牌獨立思考的權威感\", \"suggested_angles\": \"破除迷思、實務角度、價值觀闡述\", \"content_type\": \"觀點\"}, {\"topic_title\": \"【測試】2026 趨勢：個人品牌 × AI Agent 新商業模式\", \"source_url\": \"https://example.com/mock/trend\", \"relevance_score\": 85, \"brand_relevance\": \"前瞻內容能塑造領導者形象\", \"suggested_angles\": \"市場數據、潛在機會、實戰準備\", \"content_type\": \"趨勢\"}, {\"topic_title\": \"【測試】Notion + AI 一人公司營運系統實戰\", \"source_url\": \"https://example.com/mock/notion\", \"relevance_score\": 82, \"brand_relevance\": \"Notion 是受眾常用工具，搭配 AI 是熱門組合\", \"suggested_angles\": \"模板分享、自動化範例、效率對比\", \"content_type\": \"教學\"}, {\"topic_title\": \"【測試】我用 AI 把 1 個人運作成 5 人團隊，每月省 18 小時\", \"source_url\": \"https://example.com/mock/efficiency\", \"relevance_score\": 80, \"brand_relevance\": \"省時數據具體可驗證，易引發轉發\", \"suggested_angles\": \"週流程對照、工具堆疊、心境改變\", \"content_type\": \"案例分享\"}];\nreturn [{\n  json: {\n    candidates: [{\n      content: { parts: [{ text: JSON.stringify(MOCK_TOPICS) }] }\n    }]\n  }\n}];"
+      },
+      "id": "w2-a2000001-0000-0000-0000-00000000mck",
+      "name": "2·假 AI 結果（測試用）",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2020,
+        1250
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. 文案產生\n**Webhook 路徑：** `/content-generation`\n\n依主題用 AI 產生 FB / IG 文案，並套用固定配圖",
+        "height": 920,
+        "width": 3000,
+        "color": 3
+      },
+      "id": "sticky-section-3",
+      "name": "區段 3：文案產生",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        260,
+        2080
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content-generation",
+        "options": {},
+        "responseMode": "lastNode"
+      },
+      "id": "w3-a3000001-0000-0000-0000-000000000001",
+      "name": "3·Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        360,
+        2350
+      ],
+      "webhookId": "content-generation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) throw new Error('Unauthorized');\nconst body = $input.first().json.body;\nif (!body.brand_id) throw new Error('Missing brand_id');\nreturn [{\n  json: {\n    brand_id: body.brand_id,\n    topic_id: body.topic_id || '',\n    topic_title: body.topic_title || '',\n    post_id: body.post_id || '',\n    mode: body.mode || 'create',\n    log_id: 'cg-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+      },
+      "id": "w3-a3000001-0000-0000-0000-000000000002",
+      "name": "3·驗證請求",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        2350
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $json.log_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "workflow_name": "content-generation",
+            "status": "running",
+            "message": "AI 生成貼文內容中...",
+            "started_at": "={{ $json.started_at }}",
+            "finished_at": "",
+            "subject": "={{ '產生貼文：' + ($('3·驗證請求').first().json.topic_title || $('3·驗證請求').first().json.topic_id || '主題') }}",
+            "progress": ""
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "progress",
+              "displayName": "progress",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w3-a3000001-0000-0000-0000-000000000003",
+      "name": "3·記錄開始",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        800,
+        2350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1265514779",
+          "cachedResultName": "brands"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "brand_id",
+              "lookupValue": "={{ $('3·驗證請求').first().json.brand_id }}"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w3-a3000001-0000-0000-0000-000000000004",
+      "name": "3·讀取品牌",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1020,
+        2250
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1432193145",
+          "cachedResultName": "topics"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "brand_id",
+              "lookupValue": "={{ $('3·驗證請求').first().json.brand_id }}"
+            },
+            {
+              "lookupColumn": "status",
+              "lookupValue": "approved"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w3-a3000001-0000-0000-0000-000000000005",
+      "name": "3·讀取已核准主題",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1020,
+        2470
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "690211244",
+          "cachedResultName": "optimization_log"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "brand_id",
+              "lookupValue": "={{ $('3·驗證請求').first().json.brand_id }}"
+            }
+          ]
+        },
+        "options": {
+          "returnAll": false,
+          "limit": 1
+        },
+        "authentication": "serviceAccount"
+      },
+      "id": "w3-a3000001-0000-0000-0000-000000000016",
+      "name": "3·讀取優化建議",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1020,
+        2650
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const brand = $('3·讀取品牌').first().json;\nconst topics = $('3·讀取已核准主題').all().map(i => i.json);\nconst optimization = $('3·讀取優化建議').first()?.json || {};\nconst req = $('3·驗證請求').first().json;\n\nif (topics.length === 0) {\n  throw new Error('沒有主題可以用來生成貼文');\n}\n\n// 優先用 topic_title 從 webhook payload（fan-out 時傳入），否則用 sheet 讀到的\nconst topicTitle = req.topic_title || (topics[0]?.topic_title || '');\nconst brandRelevance = topics[0]?.brand_relevance || '';\nconst suggestedAngles = topics[0]?.suggested_angles || '';\nconst contentType = topics[0]?.content_type || '知識長文';\nconst targetReader = topics[0]?.target_reader || brand.target_audience || '';\n\nconst topicsText = topics.slice(0, 5).map((t, i) =>\n  `${i + 1}. ${t.topic_title}（來源：${t.source_url}）\\n   品牌關聯：${t.brand_relevance || '無'}\\n   建議角度：${t.suggested_angles || '無'}`\n).join('\\n');\n\nconst optimizationHint = optimization.caption_guidelines\n  ? `\\n\\n上週優化建議：\\n文案：${optimization.caption_guidelines}\\n圖片：${optimization.image_guidelines || '無'}`\n  : '';\n\nconst wingStyleRules = `你是 Wing 的個人撰文夥伴。Wing 是台灣的講師和自學顧問（數位顧問），為自由工作者、一人公司老闆、想斜槓的上班族撰寫 Facebook 商業貼文。\n\n━━━ Wing 的聲音六原則 ━━━\n1. 溫暖有觀點：友善但有立場。不說教，但不模糊。\n2. 對比句：最愛的句式「不是 X，而是 Y」「不是你不夠努力，而是…」\n3. 虛構人物：用 Paul、Alex、Irene 等虛構客戶讓抽象想法具體化，給他們職業\n4. 第二人稱：全文用「你」稱呼讀者，不斷拉讀者進來\n5. 口語括號：用括號加插話（嗯？）（應該吧...）（對吧？）\n6. 數字錨定：用具體數字「一週 6 位數」「3-5 年」「每月省 20 小時」\n\n━━━ 視覺格式（必須嚴格遵守）━━━\n- 段落之間用 ​（零寬空白）隔開，不用空白行\n- 重大段落分隔用單獨一行「-」\n- 小標題用「▋ 」開頭\n- 列點用「．」開頭\n- Emoji 自然點綴，每篇 1-3 個\n\n━━━ 知識長文結構 ━━━\n【 挑釁性標題 】\n​\n[開場：虛構客戶場景]\n​\n-\n​\n▋ [問題根源]\n​\n[分析 + 對比句]\n​\n-\n​\n▋ [解法/框架]\n​\n[3個．列點]\n​\n-\n​\n▋ [兩個未來對比]\n​\n[一個讓人停下來的問題]\n​\n-\n​\n[溫暖收尾 + 服務提示]\n💬 私訊「自動化」了解更多`;\n\nreturn [{\n  json: {\n    brand,\n    topics,\n    prompt: `${wingStyleRules}\n\n━━━ 品牌資料 ━━━\n品牌名稱：${brand.brand_name}\n品牌主題：${brand.theme}\n風格：${brand.style || '專業、知識、科技感'}\n語調：${brand.tone || '親切實用'}\n目標受眾：${brand.target_audience}\n過去內容範例：${brand.past_content_samples || '無'}${optimizationHint}\n\n━━━ 本次主題 ━━━\n${topicsText}\n\n━━━ 你的任務 ━━━\n針對上面每個主題，各產出 1 篇符合 Wing 風格的貼文。\n以 JSON 陣列回傳，每個項目包含：\n- topic_id: 對應的主題 ID\n- caption: 完整貼文文字（繁體中文，含 hashtag，300-600 字，嚴格套用上方格式規則）\n- image_prompt: 用於 AI 生圖的英文提示詞（具體描述風格、構圖、色彩，呼應品牌主色 ${brand.primary_color || '#2A4189'} 和輔色 ${brand.secondary_color || '#C67E13'}）\n- platform: \"both\"\n\n只回傳 JSON 陣列，不要 markdown 包裹。`\n  }\n}];"
+      },
+      "id": "w3-a3000001-0000-0000-0000-000000000006",
+      "name": "3·準備 AI 提示",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        2350
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [{ role: 'user', parts: [{ text: $json.prompt }] }], generationConfig: { temperature: 0.7 } }) }}",
+        "options": {
+          "retry": {
+            "maxTries": 4
+          }
+        }
+      },
+      "id": "w3-a3000001-0000-0000-0000-000000000007",
+      "name": "3·AI 生成貼文",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        2350
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 8000
+    },
+    {
+      "parameters": {
+        "jsCode": "const brandId = $('3·驗證請求').first().json.brand_id;\nconst response = $input.first().json;\nconst content = response.candidates?.[0]?.content?.parts?.[0]?.text || '[]';\n\nlet posts;\ntry {\n  const cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  posts = JSON.parse(cleaned);\n} catch (e) {\n  throw new Error('AI 回傳格式解析失敗: ' + e.message);\n}\n\nconst now = new Date().toISOString();\n\nreturn posts.map((p, i) => ({\n  json: {\n    post_id: `post-${Date.now()}-${i}`,\n    brand_id: brandId,\n    topic_id: p.topic_id || '',\n    platform: p.platform || 'both',\n    caption: p.caption || '',\n    image_prompt: p.image_prompt || '',\n    image_url: '',\n    scheduled_time: '',\n    status: 'draft',\n    fb_post_id: '',\n    ig_post_id: '',\n    optimization_version: '0',\n    created_at: now\n  }\n}));"
+      },
+      "id": "w3-a3000001-0000-0000-0000-000000000008",
+      "name": "3·解析貼文",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        2350
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1821047073",
+          "cachedResultName": "posts"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "post_id": "={{ $json.post_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "topic_id": "={{ $json.topic_id }}",
+            "platform": "={{ $json.platform }}",
+            "caption": "={{ $json.caption }}",
+            "image_prompt": "={{ $json.image_prompt }}",
+            "image_url": "={{ $json.image_url }}",
+            "scheduled_time": "={{ $json.scheduled_time }}",
+            "status": "={{ $json.status }}",
+            "fb_post_id": "",
+            "ig_post_id": "",
+            "optimization_version": "={{ $json.optimization_version }}",
+            "created_at": "={{ $json.created_at }}",
+            "topic_title": "={{ $json.topic_title }}"
+          },
+          "schema": [
+            {
+              "id": "post_id",
+              "displayName": "post_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "topic_id",
+              "displayName": "topic_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "platform",
+              "displayName": "platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "image_prompt",
+              "displayName": "image_prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "image_url",
+              "displayName": "image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "scheduled_time",
+              "displayName": "scheduled_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fb_post_id",
+              "displayName": "fb_post_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_post_id",
+              "displayName": "ig_post_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "optimization_version",
+              "displayName": "optimization_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "topic_title",
+              "displayName": "topic_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w3-a3000001-0000-0000-0000-000000000009",
+      "name": "3·寫入貼文",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2000,
+        2350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 將已使用的主題標記為 used\nconst posts = $('3·解析貼文').all().map(i => i.json);\nconst topicIds = [...new Set(posts.map(p => p.topic_id).filter(Boolean))];\n\nreturn topicIds.map(id => ({ json: { topic_id: id, status: 'used' } }));"
+      },
+      "id": "w3-a3000001-0000-0000-0000-000000000010",
+      "name": "3·標記已用主題",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        2350
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1432193145",
+          "cachedResultName": "topics"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "topic_id": "={{ $json.topic_id }}",
+            "status": "used"
+          },
+          "schema": [
+            {
+              "id": "topic_id",
+              "displayName": "topic_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "topic_title",
+              "displayName": "topic_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source_url",
+              "displayName": "source_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "relevance_score",
+              "displayName": "relevance_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "topic_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w3-a3000001-0000-0000-0000-000000000011",
+      "name": "3·更新主題狀態",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2440,
+        2350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $('3·驗證請求').first().json.log_id }}",
+            "status": "success",
+            "message": "={{ '已生成 ' + $('3·解析貼文').all().length + ' 篇貼文草稿' }}",
+            "finished_at": "={{ $now.toISO() }}",
+            "subject": "={{ '產生貼文：' + ($('3·驗證請求').first().json.topic_title || '主題') + ' (FB + IG)' }}",
+            "progress": ""
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "progress",
+              "displayName": "progress",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w3-a3000001-0000-0000-0000-000000000012",
+      "name": "3·記錄完成",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2660,
+        2350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 套用固定配圖（依使用者指定）\nconst FIXED_IMG = 'https://i.ibb.co/WWVf0Zm9/content.jpg';\nconst topicTitle = (($('3·驗證請求').first() || {}).json || {}).topic_title || '';\nconst results = [];\nfor (const item of $input.all()) {\n  const post = item.json;\n  results.push({ json: { ...post, image_url: FIXED_IMG, topic_title: topicTitle || post.topic_title || '' } });\n}\nreturn results;"
+      },
+      "id": "w3-a3000001-0000-0000-0000-00000000ig03",
+      "name": "3·合併圖片 URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        2350
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 拆兩列：一篇主題 → 一篇 FB + 一篇 IG\nconst out = [];\nfor (const item of $input.all()) {\n  const base = item.json;\n  const ts = Date.now();\n  const rnd = Math.random().toString(36).slice(2, 7);\n  for (const plat of ['facebook', 'instagram']) {\n    out.push({ json: {\n      ...base,\n      post_id: base.post_id || `post-${ts}-${plat[0]}-${rnd}`,\n      platform: plat\n    } });\n  }\n}\nreturn out;"
+      },
+      "id": "w3-a3000001-0000-0000-0000-0000000000s1",
+      "name": "3·拆兩列",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        2350
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "b1",
+              "leftValue": "={{ $('3·驗證請求').first().json.mode }}",
+              "rightValue": "regenerate",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "w3-a3000001-0000-0000-0000-0000000000if",
+      "name": "3·是否重新生成？",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        2350
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1821047073",
+          "cachedResultName": "posts"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "post_id": "={{ $('3·驗證請求').first().json.post_id }}",
+            "caption": "={{ $json.caption }}",
+            "image_prompt": "={{ $json.image_prompt }}",
+            "image_url": "={{ $json.image_url }}"
+          },
+          "matchingColumns": [
+            "post_id"
+          ],
+          "schema": [
+            {
+              "id": "post_id",
+              "displayName": "post_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "image_prompt",
+              "displayName": "image_prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "image_url",
+              "displayName": "image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w3-a3000001-0000-0000-0000-0000000000up",
+      "name": "3·更新貼文",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2000,
+        2510
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "mock-check-cg",
+              "leftValue": "={{ $env.MOCK_GEMINI }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "w3-a3000001-0000-0000-0000-00000000mif",
+      "name": "3·是否 MOCK_GEMINI？",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        2350
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// MOCK MODE - Wing style caption\nconst tt = $('3·驗證請求').first().json.topic_title || '一人公司 AI 自動化';\nconst topicId = $('3·驗證請求').first().json.topic_id || '';\n// Shorten topic title for use in heading\nconst topicShort = tt.replace(/^【測試】/, '').slice(0, 20);\nconst caption = \"【 {topic_short}？你可能搞錯重點了 】​\\n​\\nAlex 是一位接案設計師，每次聽到 AI 自動化，第一個反應都是：「這種東西，是大公司在用的吧？」​\\n​\\n（嗯，其實不是。）​\\n​\\n-​\\n​\\n▋ 大多數一人公司沒有導入 AI 的真正原因​\\n​\\n不是不想用。是不知道從哪裡開始。​\\n​\\n不是你不夠努力，而是沒有人告訴你：哪些事情用 AI 處理最有效、哪些事情你才是不可取代的那個。​\\n​\\n當你把時間花在每封重複的報價信、每次格式差不多的提案簡報，你其實是在用最貴的資源（你的時間）做最便宜的工作。​\\n​\\n-​\\n​\\n▋ 三件現在就可以自動化的事​\\n​\\n．客戶詢問回覆：AI 草稿 + 你的最後確認，省下每次 20 分鐘​\\n．報價單生成：填入變數，2 分鐘出一份專業文件​\\n．社群貼文：主題給 AI，你來潤稿，一週內容半天搞定​\\n​\\n-​\\n​\\n▋ 一年後，你會是哪一種人？​\\n​\\n一種：每天還是重複同樣的雜事，時間不夠用，接不了更多客戶。​\\n另一種：讓 AI 處理重複的，你專注在真正有價值的事，收入翻倍但工時沒有增加。​\\n​\\n你現在做的每個選擇，都在決定你是哪一種。​\\n​\\n-​\\n​\\n如果你也想開始但不知道從哪裡下手，我可以幫你拆解。​\\n💬 私訊「自動化」，告訴我你現在最花時間的一件事​\\n​\\n#一人公司 #AI自動化 #數位顧問 #自由工作者\".replace('{topic_short}', topicShort);\nconst posts = [{\n  topic_id: topicId,\n  platform: 'both',\n  caption: caption,\n  image_prompt: 'Minimalist digital illustration, solo entrepreneur working with AI assistant, clean modern style, blue #2A4189 and golden orange #C67E13 accents, Taiwanese professional aesthetic, no text overlay',\n}];\nreturn [{ json: { candidates: [{ content: { parts: [{ text: JSON.stringify(posts) }] } }] } }];"
+      },
+      "id": "w3-a3000001-0000-0000-0000-00000000mck",
+      "name": "3·假 貼文回應（測試用）",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        2250
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 4. 單篇發文\n**Webhook 路徑：** `/post-scheduler`\n\n把指定貼文實際發佈到 Facebook + Instagram",
+        "height": 920,
+        "width": 3040,
+        "color": 6
+      },
+      "id": "sticky-section-4",
+      "name": "區段 4：單篇發文",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        260,
+        3080
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "post-scheduler",
+        "options": {},
+        "responseMode": "lastNode"
+      },
+      "id": "w4-a4000001-0000-0000-0000-000000000001",
+      "name": "4·Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        360,
+        3450
+      ],
+      "webhookId": "post-scheduler"
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) {\n  throw new Error('Unauthorized');\n}\nconst { brand_id, post_id } = $input.first().json.body;\nif (!brand_id || !post_id) throw new Error('Missing brand_id or post_id');\n\nreturn [{\n  json: {\n    brand_id,\n    post_id,\n    log_id: 'ps-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+      },
+      "id": "w4-a4000001-0000-0000-0000-000000000002",
+      "name": "4·驗證請求",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        3450
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $json.log_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "workflow_name": "post-scheduler",
+            "status": "running",
+            "message": "發佈貼文中...",
+            "started_at": "={{ $json.started_at }}",
+            "finished_at": ""
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w4-a4000001-0000-0000-0000-000000000003",
+      "name": "4·記錄開始",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        800,
+        3450
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1265514779",
+          "cachedResultName": "brands"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "brand_id",
+              "lookupValue": "={{ $('4·驗證請求').first().json.brand_id }}"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w4-a4000001-0000-0000-0000-000000000004",
+      "name": "4·讀取品牌",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1020,
+        3350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1821047073",
+          "cachedResultName": "posts"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "post_id",
+              "lookupValue": "={{ $('4·驗證請求').first().json.post_id }}"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w4-a4000001-0000-0000-0000-000000000005",
+      "name": "4·讀取貼文",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1020,
+        3570
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const brand = $('4·讀取品牌').first().json;\nconst post = $('4·讀取貼文').first().json;\n\nif (!brand.meta_access_token) {\n  throw new Error('品牌尚未設定 Meta Access Token，無法發佈');\n}\nif (!post.caption) {\n  throw new Error('貼文缺少文案內容');\n}\n\nconst platform = post.platform || 'both';\nconst publishFB = platform === 'facebook' || platform === 'both';\nconst publishIG = platform === 'instagram' || platform === 'both';\n\nreturn [{\n  json: {\n    ...post,\n    access_token: brand.meta_access_token,\n    fb_page_id: brand.fb_page_id,\n    ig_account_id: brand.ig_account_id,\n    publishFB,\n    publishIG\n  }\n}];"
+      },
+      "id": "w4-a4000001-0000-0000-0000-000000000006",
+      "name": "4·prepare_publish",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        3450
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.publishFB }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "w4-a4000001-0000-0000-0000-000000000007",
+      "name": "4·發佈到 Facebook?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        3350
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.fb_page_id }}/photos",
+        "sendQuery": true,
+        "options": {
+          "retry": {
+            "maxTries": 2
+          }
+        },
+        "sendHeaders": false,
+        "sendBody": false,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $json.image_url }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.caption }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $json.access_token }}"
+            }
+          ]
+        }
+      },
+      "id": "w4-a4000001-0000-0000-0000-000000000008",
+      "name": "4·發佈 Facebook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1780,
+        3250
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('4·prepare_publish').first().json.publishIG }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "w4-a4000001-0000-0000-0000-000000000009",
+      "name": "4·發佈到 Instagram?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        3570
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('4·prepare_publish').first().json.ig_account_id }}/media",
+        "sendQuery": true,
+        "options": {
+          "retry": {
+            "maxTries": 2
+          }
+        },
+        "sendHeaders": false,
+        "sendBody": false,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "image_url",
+              "value": "={{ $('4·prepare_publish').first().json.image_url }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $('4·prepare_publish').first().json.caption }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('4·prepare_publish').first().json.access_token }}"
+            }
+          ]
+        }
+      },
+      "id": "w4-a4000001-0000-0000-0000-000000000010",
+      "name": "4·建立 IG 媒體容器",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1780,
+        3510
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('4·prepare_publish').first().json.ig_account_id }}/media_publish",
+        "sendQuery": true,
+        "options": {
+          "retry": {
+            "maxTries": 2
+          }
+        },
+        "sendHeaders": false,
+        "sendBody": false,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $('4·建立 IG 媒體容器').first().json.id }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('4·prepare_publish').first().json.access_token }}"
+            }
+          ]
+        }
+      },
+      "id": "w4-a4000001-0000-0000-0000-000000000011",
+      "name": "4·發佈 IG 媒體",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2020,
+        3510
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Safely read FB / IG results — they may not have executed\nconst postId = $('4·驗證請求').first().json.post_id;\nlet fbResult = null;\nlet igResult = null;\ntry { fbResult = $('4·發佈 Facebook').first()?.json; } catch (e) {}\ntry { igResult = $('4·發佈 IG 媒體').first()?.json; } catch (e) {}\nreturn [{\n  json: {\n    post_id: postId,\n    status: 'published',\n    fb_post_id: fbResult?.id || fbResult?.post_id || '',\n    ig_post_id: igResult?.id || ''\n  }\n}];"
+      },
+      "id": "w4-a4000001-0000-0000-0000-000000000012",
+      "name": "4·合併結果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2260,
+        3450
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1821047073",
+          "cachedResultName": "posts"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "post_id": "={{ $json.post_id }}",
+            "status": "published",
+            "fb_post_id": "={{ $json.fb_post_id }}",
+            "ig_post_id": "={{ $json.ig_post_id }}"
+          },
+          "schema": [
+            {
+              "id": "post_id",
+              "displayName": "post_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "topic_id",
+              "displayName": "topic_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "platform",
+              "displayName": "platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "image_prompt",
+              "displayName": "image_prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "image_url",
+              "displayName": "image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "scheduled_time",
+              "displayName": "scheduled_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fb_post_id",
+              "displayName": "fb_post_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_post_id",
+              "displayName": "ig_post_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "optimization_version",
+              "displayName": "optimization_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "post_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w4-a4000001-0000-0000-0000-000000000013",
+      "name": "4·更新貼文狀態",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2480,
+        3450
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $('4·驗證請求').first().json.log_id }}",
+            "status": "success",
+            "message": "貼文已成功發佈",
+            "finished_at": "={{ $now.toISO() }}"
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w4-a4000001-0000-0000-0000-000000000014",
+      "name": "4·記錄完成",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2700,
+        3450
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 8,
+        "unit": "seconds"
+      },
+      "id": "w4-a4000001-0000-0000-0000-00000000wait",
+      "name": "4·等待 IG 處理",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2020,
+        3650
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 5. 數據收集\n**Webhook 路徑：** `/analytics-collection`\n\n抓取已發佈貼文的按讚 / 留言 / 觸及等成效",
+        "height": 920,
+        "width": 3040,
+        "color": 2
+      },
+      "id": "sticky-section-5",
+      "name": "區段 5：數據收集",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        260,
+        4080
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "analytics-collection",
+        "options": {},
+        "responseMode": "responseNode"
+      },
+      "id": "w5-a5000001-0000-0000-0000-000000000001",
+      "name": "5·Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        360,
+        4370
+      ],
+      "webhookId": "analytics-collection"
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) {\n  throw new Error('Unauthorized');\n}\nconst { brand_id } = $input.first().json.body;\nif (!brand_id) throw new Error('Missing brand_id');\n\nreturn [{\n  json: {\n    brand_id,\n    log_id: 'ac-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+      },
+      "id": "w5-a5000001-0000-0000-0000-000000000002",
+      "name": "5·驗證請求",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        4370
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $json.log_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "workflow_name": "analytics-collection",
+            "status": "running",
+            "message": "收集貼文數據中...",
+            "started_at": "={{ $json.started_at }}",
+            "finished_at": ""
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w5-a5000001-0000-0000-0000-000000000003",
+      "name": "5·記錄開始",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        800,
+        4370
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1265514779",
+          "cachedResultName": "brands"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "brand_id",
+              "lookupValue": "={{ $('5·驗證請求').first().json.brand_id }}"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w5-a5000001-0000-0000-0000-000000000004",
+      "name": "5·讀取品牌",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1020,
+        4270
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1821047073",
+          "cachedResultName": "posts"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "brand_id",
+              "lookupValue": "={{ $('5·驗證請求').first().json.brand_id }}"
+            },
+            {
+              "lookupColumn": "status",
+              "lookupValue": "published"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w5-a5000001-0000-0000-0000-000000000005",
+      "name": "5·讀取已發佈貼文",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1020,
+        4490
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const brand = $('5·讀取品牌').first().json;\nconst posts = $('5·讀取已發佈貼文').all().map(i => i.json);\n\nif (!brand.meta_access_token) {\n  throw new Error('品牌尚未設定 Meta Access Token');\n}\n\nconst results = [];\nfor (const post of posts) {\n  if (post.fb_post_id) {\n    results.push({\n      post_id: post.post_id,\n      platform_post_id: post.fb_post_id,\n      platform: 'facebook',\n      access_token: brand.meta_access_token\n    });\n  }\n  if (post.ig_post_id) {\n    results.push({\n      post_id: post.post_id,\n      platform_post_id: post.ig_post_id,\n      platform: 'instagram',\n      access_token: brand.meta_access_token\n    });\n  }\n}\n\nreturn results.map(r => ({ json: r }));"
+      },
+      "id": "w5-a5000001-0000-0000-0000-000000000006",
+      "name": "5·展開貼文清單",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        4370
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.platform }}",
+              "rightValue": "facebook",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "w5-a5000001-0000-0000-0000-000000000007",
+      "name": "5·平台判斷",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        4370
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.platform_post_id }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "likes.summary(true),comments.summary(true),shares,insights.metric(post_impressions_unique)"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $json.access_token }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": false
+        }
+      },
+      "id": "w5-a5000001-0000-0000-0000-000000000008",
+      "name": "5·FB 數據 API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1780,
+        4250
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.platform_post_id }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "metric",
+              "value": "impressions,reach,likes,comments,shares,engagement"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $json.access_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "w5-a5000001-0000-0000-0000-000000000009",
+      "name": "5·IG 數據 API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1780,
+        4490
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const brandId = $('5·驗證請求').first().json.brand_id;\nconst items = $input.all();\nconst now = new Date().toISOString();\n\nreturn items.map((item, i) => {\n  const data = item.json;\n  const likes = data.likes?.summary?.total_count || data.data?.[0]?.values?.[0]?.value || 0;\n  const comments = data.comments?.summary?.total_count || data.data?.[1]?.values?.[0]?.value || 0;\n  const shares = data.shares?.count || data.data?.[2]?.values?.[0]?.value || 0;\n  const reach = data.insights?.data?.[0]?.values?.[0]?.value || data.data?.[3]?.values?.[0]?.value || 0;\n  const totalInteractions = likes + comments + shares;\n  const engagementRate = reach > 0 ? ((totalInteractions / reach) * 100).toFixed(2) : '0';\n\n  return {\n    json: {\n      analytics_id: `ana-${Date.now()}-${i}`,\n      brand_id: brandId,\n      post_id: $('5·展開貼文清單').all()[i]?.json?.post_id || '',\n      platform: $('5·展開貼文清單').all()[i]?.json?.platform || '',\n      likes: String(likes),\n      comments: String(comments),\n      shares: String(shares),\n      reach: String(reach),\n      engagement_rate: engagementRate,\n      collected_at: now\n    }\n  };\n});"
+      },
+      "id": "w5-a5000001-0000-0000-0000-000000000010",
+      "name": "5·整理數據",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2040,
+        4370
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "458491777",
+          "cachedResultName": "analytics"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "analytics_id": "={{ $json.analytics_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "post_id": "={{ $json.post_id }}",
+            "platform": "={{ $json.platform }}",
+            "likes": "={{ $json.likes }}",
+            "comments": "={{ $json.comments }}",
+            "shares": "={{ $json.shares }}",
+            "reach": "={{ $json.reach }}",
+            "engagement_rate": "={{ $json.engagement_rate }}",
+            "collected_at": "={{ $json.collected_at }}"
+          },
+          "schema": [
+            {
+              "id": "analytics_id",
+              "displayName": "analytics_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "post_id",
+              "displayName": "post_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "platform",
+              "displayName": "platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "likes",
+              "displayName": "likes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "comments",
+              "displayName": "comments",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "shares",
+              "displayName": "shares",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reach",
+              "displayName": "reach",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "engagement_rate",
+              "displayName": "engagement_rate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "collected_at",
+              "displayName": "collected_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w5-a5000001-0000-0000-0000-000000000011",
+      "name": "5·寫入數據",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2260,
+        4370
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $('5·驗證請求').first().json.log_id }}",
+            "status": "success",
+            "message": "={{ '已收集 ' + $input.all().length + ' 筆數據' }}",
+            "finished_at": "={{ $now.toISO() }}"
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w5-a5000001-0000-0000-0000-000000000012",
+      "name": "5·記錄完成",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2480,
+        4370
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { records_collected: $('5·整理數據').all().length } }) }}"
+      },
+      "id": "w5-a5000001-0000-0000-0000-000000000013",
+      "name": "5·回應成功",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2700,
+        4370
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 6. 每週優化\n**Webhook 路徑：** `/weekly-optimization`\n\n分析成效數據，產生下週文案 / 配圖優化建議",
+        "height": 920,
+        "width": 2780,
+        "color": 7
+      },
+      "id": "sticky-section-6",
+      "name": "區段 6：每週優化",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        260,
+        5080
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "weekly-optimization",
+        "options": {},
+        "responseMode": "responseNode"
+      },
+      "id": "w6-a6000001-0000-0000-0000-000000000001",
+      "name": "6·Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        360,
+        5350
+      ],
+      "webhookId": "weekly-optimization"
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) {\n  throw new Error('Unauthorized');\n}\nconst { brand_id } = $input.first().json.body;\nif (!brand_id) throw new Error('Missing brand_id');\n\nreturn [{\n  json: {\n    brand_id,\n    log_id: 'wo-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+      },
+      "id": "w6-a6000001-0000-0000-0000-000000000002",
+      "name": "6·驗證請求",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        5350
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $json.log_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "workflow_name": "weekly-optimization",
+            "status": "running",
+            "message": "AI 分析本週數據並產生優化建議...",
+            "started_at": "={{ $json.started_at }}",
+            "finished_at": ""
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w6-a6000001-0000-0000-0000-000000000003",
+      "name": "6·記錄開始",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        800,
+        5350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1265514779",
+          "cachedResultName": "brands"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "brand_id",
+              "lookupValue": "={{ $('6·驗證請求').first().json.brand_id }}"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w6-a6000001-0000-0000-0000-000000000004",
+      "name": "6·讀取品牌",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1020,
+        5250
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "458491777",
+          "cachedResultName": "analytics"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "brand_id",
+              "lookupValue": "={{ $('6·驗證請求').first().json.brand_id }}"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w6-a6000001-0000-0000-0000-000000000005",
+      "name": "6·讀取數據",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1020,
+        5470
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1821047073",
+          "cachedResultName": "posts"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "brand_id",
+              "lookupValue": "={{ $('6·驗證請求').first().json.brand_id }}"
+            },
+            {
+              "lookupColumn": "status",
+              "lookupValue": "published"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w6-a6000001-0000-0000-0000-000000000006",
+      "name": "6·讀取貼文",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1020,
+        5650
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const brand = $('6·讀取品牌').first().json;\nconst analytics = $('6·讀取數據').all().map(i => i.json);\nconst posts = $('6·讀取貼文').all().map(i => i.json);\n\n// 計算本週的開始日（上個週一）\nconst now = new Date();\nconst dayOfWeek = now.getDay();\nconst weekStart = new Date(now);\nweekStart.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));\nweekStart.setHours(0, 0, 0, 0);\nconst weekStartStr = weekStart.toISOString().split('T')[0];\n\n// 篩選本週數據\nconst weekAnalytics = analytics.filter(a => {\n  return a.collected_at >= weekStartStr;\n});\n\n// 按互動率排序\nconst sorted = weekAnalytics.sort((a, b) => \n  parseFloat(b.engagement_rate || '0') - parseFloat(a.engagement_rate || '0')\n);\n\n// 找出 top 3 貼文\nconst topPostIds = [...new Set(sorted.slice(0, 3).map(a => a.post_id))];\nconst topPosts = topPostIds.map(pid => {\n  const post = posts.find(p => p.post_id === pid);\n  const ana = sorted.find(a => a.post_id === pid);\n  return {\n    post_id: pid,\n    caption: post?.caption?.slice(0, 100) || '',\n    engagement_rate: ana?.engagement_rate || '0',\n    likes: ana?.likes || '0',\n    reach: ana?.reach || '0'\n  };\n});\n\n// 計算整體統計\nconst totalReach = weekAnalytics.reduce((s, a) => s + parseInt(a.reach || '0'), 0);\nconst avgEngagement = weekAnalytics.length > 0 \n  ? (weekAnalytics.reduce((s, a) => s + parseFloat(a.engagement_rate || '0'), 0) / weekAnalytics.length).toFixed(2)\n  : '0';\n\nconst prompt = `你是社群媒體數據分析專家。請分析以下品牌的本週社群數據，並提供具體的優化建議。\n\n品牌：${brand.brand_name}\n主題：${brand.theme}\n目標受眾：${brand.target_audience}\n\n本週統計：\n- 總觸及：${totalReach}\n- 平均互動率：${avgEngagement}%\n- 數據筆數：${weekAnalytics.length}\n\nTop 3 表現最佳貼文：\n${topPosts.map((p, i) => `${i+1}. 互動率 ${p.engagement_rate}% | 讚 ${p.likes} | 觸及 ${p.reach}\\n   文案預覽：${p.caption}`).join('\\n')}\n\n請回傳 JSON 物件（不要 markdown 包裹），包含：\n- top_topics: 表現最好的主題方向（字串）\n- top_posts: 最佳貼文分析摘要（字串）\n- caption_guidelines: 文案撰寫優化建議（字串，具體可執行的建議）\n- image_guidelines: 圖片風格優化建議（字串）`;\n\nreturn [{\n  json: {\n    prompt,\n    week_start: weekStartStr,\n    stats: { totalReach, avgEngagement, count: weekAnalytics.length },\n    topPosts\n  }\n}];"
+      },
+      "id": "w6-a6000001-0000-0000-0000-000000000007",
+      "name": "6·準備分析",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        5350
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{ $env.GEMINI_MODEL || 'gemini-2.0-flash' }}:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  systemInstruction: { parts: [{ text: '你是社群行銷數據分析師。根據過去一週的貼文表現，找出表現最佳的主題與貼文，並提出下週文案與圖片的優化方向。回傳 JSON 物件，包含：top_topics（陣列）、top_posts（陣列）、caption_guidelines（字串）、image_guidelines（字串）。不要用 markdown 包裹。' }] },\n  contents: [{ role: 'user', parts: [{ text: `過去一週數據：\\n${JSON.stringify($json.summary || $json)}` }] }],\n  generationConfig: { temperature: 0.4 }\n}) }}",
+        "options": {
+          "retry": {
+            "maxTries": 3
+          }
+        }
+      },
+      "id": "w6-a6000001-0000-0000-0000-000000000008",
+      "name": "6·AI 優化分析",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        5350
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "const brandId = $('6·驗證請求').first().json.brand_id;\nconst weekStart = $('6·準備分析').first().json.week_start;\nconst response = $input.first().json;\nconst content = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\n\nlet result;\ntry {\n  const cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  result = JSON.parse(cleaned);\n} catch (e) {\n  result = {\n    top_topics: '解析失敗',\n    top_posts: '解析失敗',\n    caption_guidelines: content.slice(0, 500),\n    image_guidelines: ''\n  };\n}\n\nreturn [{\n  json: {\n    log_id: `opt-${Date.now()}`,\n    brand_id: brandId,\n    week_start: weekStart,\n    top_topics: result.top_topics || '',\n    top_posts: result.top_posts || '',\n    caption_guidelines: result.caption_guidelines || '',\n    image_guidelines: result.image_guidelines || '',\n    created_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "w6-a6000001-0000-0000-0000-000000000009",
+      "name": "6·解析結果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        5350
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "690211244",
+          "cachedResultName": "optimization_log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $json.log_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "week_start": "={{ $json.week_start }}",
+            "top_topics": "={{ $json.top_topics }}",
+            "top_posts": "={{ $json.top_posts }}",
+            "caption_guidelines": "={{ $json.caption_guidelines }}",
+            "image_guidelines": "={{ $json.image_guidelines }}",
+            "created_at": "={{ $json.created_at }}"
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "week_start",
+              "displayName": "week_start",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "top_topics",
+              "displayName": "top_topics",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "top_posts",
+              "displayName": "top_posts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "caption_guidelines",
+              "displayName": "caption_guidelines",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "image_guidelines",
+              "displayName": "image_guidelines",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w6-a6000001-0000-0000-0000-000000000010",
+      "name": "6·寫入優化紀錄",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2000,
+        5350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $('6·驗證請求').first().json.log_id }}",
+            "status": "success",
+            "message": "週報優化分析完成",
+            "finished_at": "={{ $now.toISO() }}"
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w6-a6000001-0000-0000-0000-000000000011",
+      "name": "6·記錄完成",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2220,
+        5350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: $('6·解析結果').first().json }) }}"
+      },
+      "id": "w6-a6000001-0000-0000-0000-000000000012",
+      "name": "6·回應成功",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2440,
+        5350
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 7. 潛在客戶辨識\n**Webhook 路徑：** `/customer-identification`\n\n從互動留言中辨識潛在客戶與後續行動建議",
+        "height": 920,
+        "width": 3440,
+        "color": 1
+      },
+      "id": "sticky-section-7",
+      "name": "區段 7：潛在客戶辨識",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        260,
+        6080
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "customer-identification",
+        "options": {},
+        "responseMode": "responseNode"
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000001",
+      "name": "7·Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        360,
+        6350
+      ],
+      "webhookId": "customer-identification"
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) {\n  throw new Error('Unauthorized');\n}\nconst { brand_id } = $input.first().json.body;\nif (!brand_id) throw new Error('Missing brand_id');\n\nreturn [{\n  json: {\n    brand_id,\n    log_id: 'ci-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000002",
+      "name": "7·驗證請求",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        6350
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $json.log_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "workflow_name": "customer-identification",
+            "status": "running",
+            "message": "掃描貼文互動識別潛在客戶中...",
+            "started_at": "={{ $json.started_at }}",
+            "finished_at": ""
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000003",
+      "name": "7·記錄開始",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        800,
+        6350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1265514779",
+          "cachedResultName": "brands"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "brand_id",
+              "lookupValue": "={{ $('7·驗證請求').first().json.brand_id }}"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000004",
+      "name": "7·讀取品牌",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1020,
+        6250
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1821047073",
+          "cachedResultName": "posts"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "brand_id",
+              "lookupValue": "={{ $('7·驗證請求').first().json.brand_id }}"
+            },
+            {
+              "lookupColumn": "status",
+              "lookupValue": "published"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000005",
+      "name": "7·讀取貼文",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1020,
+        6470
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const brand = $('7·讀取品牌').first().json;\nconst posts = $('7·讀取貼文').all().map(i => i.json);\n\nif (!brand.meta_access_token) {\n  throw new Error('品牌尚未設定 Meta Access Token');\n}\n\n// 收集需要抓取留言的貼文\nconst targets = [];\nfor (const post of posts) {\n  if (post.fb_post_id) {\n    targets.push({\n      post_id: post.post_id,\n      platform_post_id: post.fb_post_id,\n      platform: 'facebook',\n      access_token: brand.meta_access_token\n    });\n  }\n  if (post.ig_post_id) {\n    targets.push({\n      post_id: post.post_id,\n      platform_post_id: post.ig_post_id,\n      platform: 'instagram',\n      access_token: brand.meta_access_token\n    });\n  }\n}\n\nreturn targets.map(t => ({ json: t }));"
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000006",
+      "name": "7·展開貼文",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        6350
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.platform_post_id }}/comments",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "from{id,name},message,created_time"
+            },
+            {
+              "name": "limit",
+              "value": "100"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $json.access_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000007",
+      "name": "7·抓取留言",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        6350
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allComments = [];\n\nfor (const item of $input.all()) {\n  const comments = item.json.data || [];\n  const postId = $('7·展開貼文').all().find((_, idx) => idx === $input.all().indexOf(item))?.json?.post_id || '';\n  \n  for (const c of comments) {\n    allComments.push({\n      post_id: postId,\n      user_name: c.from?.name || '匿名',\n      user_id: c.from?.id || '',\n      message: c.message || '',\n      created_time: c.created_time || ''\n    });\n  }\n}\n\nif (allComments.length === 0) {\n  return [{ json: { no_comments: true, comments: [] } }];\n}\n\nreturn [{ json: { no_comments: false, comments: allComments } }];"
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000008",
+      "name": "7·彙整留言",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        6350
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.no_comments }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000009",
+      "name": "7·有留言?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        6350
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{ $env.GEMINI_MODEL || 'gemini-2.0-flash' }}:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  systemInstruction: { parts: [{ text: '你是潛在客戶分析師。根據社群互動內容，判斷每位互動者是否為潛在客戶，並建議下一步行動。回傳 JSON 陣列，每個項目包含：display_name、interaction_type、interaction_content、suggested_action。不要用 markdown 包裹。' }] },\n  contents: [{ role: 'user', parts: [{ text: `互動資料：\\n${JSON.stringify($json)}` }] }],\n  generationConfig: { temperature: 0.3 }\n}) }}",
+        "options": {
+          "retry": {
+            "maxTries": 3
+          }
+        }
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000010",
+      "name": "7·AI 識別客戶",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2220,
+        6250
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "const brandId = $('7·驗證請求').first().json.brand_id;\nconst response = $input.first().json;\nconst content = response.candidates?.[0]?.content?.parts?.[0]?.text || '[]';\n\nlet customers;\ntry {\n  const cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  customers = JSON.parse(cleaned);\n} catch (e) {\n  customers = [];\n}\n\nconst now = new Date().toISOString();\n\nreturn customers.map((c, i) => ({\n  json: {\n    customer_id: `cust-${Date.now()}-${i}`,\n    brand_id: brandId,\n    display_name: c.display_name || '',\n    interaction_type: c.interaction_type || 'comment',\n    interaction_content: c.interaction_content || '',\n    post_id: c.post_id || '',\n    suggested_action: c.suggested_action || '',\n    status: 'new',\n    identified_at: now\n  }\n}));"
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000011",
+      "name": "7·解析客戶",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        6250
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "633003086",
+          "cachedResultName": "potential_customers"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "customer_id": "={{ $json.customer_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "display_name": "={{ $json.display_name }}",
+            "interaction_type": "={{ $json.interaction_type }}",
+            "interaction_content": "={{ $json.interaction_content }}",
+            "post_id": "={{ $json.post_id }}",
+            "suggested_action": "={{ $json.suggested_action }}",
+            "status": "={{ $json.status }}",
+            "identified_at": "={{ $json.identified_at }}"
+          },
+          "schema": [
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "display_name",
+              "displayName": "display_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interaction_type",
+              "displayName": "interaction_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interaction_content",
+              "displayName": "interaction_content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "post_id",
+              "displayName": "post_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "suggested_action",
+              "displayName": "suggested_action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "identified_at",
+              "displayName": "identified_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000012",
+      "name": "7·寫入客戶",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2660,
+        6250
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $('7·驗證請求').first().json.log_id }}",
+            "status": "success",
+            "message": "={{ '識別出 ' + $input.all().length + ' 位潛在客戶' }}",
+            "finished_at": "={{ $now.toISO() }}"
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000013",
+      "name": "7·記錄完成",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2880,
+        6350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { customers_found: $('7·解析客戶').all()?.length || 0 } }) }}"
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000014",
+      "name": "7·回應成功",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3100,
+        6350
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: { customers_found: 0, message: '本次掃描未發現留言' } }) }}"
+      },
+      "id": "w7-a7000001-0000-0000-0000-000000000015",
+      "name": "7·回應無留言",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2220,
+        6470
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 8. 排程更新\n**Webhook 路徑：** `/update-schedule`\n\n更新品牌的自動發文排程設定（星期 / 時段）",
+        "height": 920,
+        "width": 1800,
+        "color": 5
+      },
+      "id": "sticky-section-8",
+      "name": "區段 8：排程更新",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        260,
+        7080
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "update-schedule",
+        "options": {},
+        "responseMode": "responseNode"
+      },
+      "id": "w8-a8000001-0000-0000-0000-000000000001",
+      "name": "8·Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        360,
+        7250
+      ],
+      "webhookId": "update-schedule"
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiKey = $input.first().json.body.api_key;\nif (!apiKey || apiKey !== $env.N8N_API_KEY) {\n  throw new Error('Unauthorized');\n}\nconst body = $input.first().json.body;\nconst { brand_id, frequency, post_times, topic_discovery_day, analytics_day } = body;\nif (!brand_id) throw new Error('Missing brand_id');\n\nreturn [{\n  json: {\n    brand_id,\n    frequency: frequency || '3',\n    post_times: post_times || '[\"09:00\",\"12:00\",\"18:00\"]',\n    topic_discovery_day: topic_discovery_day || 'monday',\n    analytics_day: analytics_day || 'sunday',\n    log_id: 'us-' + $now.toISO().replace(/[^0-9]/g, '').slice(0, 17),\n    started_at: $now.toISO()\n  }\n}];"
+      },
+      "id": "w8-a8000001-0000-0000-0000-000000000002",
+      "name": "8·驗證請求",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        7250
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $json.log_id }}",
+            "brand_id": "={{ $json.brand_id }}",
+            "workflow_name": "update-schedule",
+            "status": "running",
+            "message": "更新排程設定中...",
+            "started_at": "={{ $json.started_at }}",
+            "finished_at": ""
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w8-a8000001-0000-0000-0000-000000000003",
+      "name": "8·記錄開始",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        800,
+        7250
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('8·驗證請求').first().json;\n\n// 將星期轉換為 cron 格式\nconst dayMap = {\n  monday: 1, tuesday: 2, wednesday: 3,\n  thursday: 4, friday: 5, saturday: 6, sunday: 0\n};\n\nconst topicDay = dayMap[data.topic_discovery_day] ?? 1;\nconst analyticsDay = dayMap[data.analytics_day] ?? 0;\n\n// 解析發文時間\nlet postTimes;\ntry {\n  postTimes = JSON.parse(data.post_times);\n} catch {\n  postTimes = ['09:00', '12:00', '18:00'];\n}\n\n// 產生排程摘要\nconst summary = {\n  brand_id: data.brand_id,\n  schedules: {\n    topic_discovery: {\n      description: `每週${['日','一','二','三','四','五','六'][topicDay]}自動搜尋主題`,\n      cron: `0 9 * * ${topicDay}`,\n      workflow: 'topic-discovery'\n    },\n    content_generation: {\n      description: `主題搜尋後隔天自動生成貼文`,\n      cron: `0 10 * * ${(topicDay + 1) % 7}`,\n      workflow: 'content-generation'\n    },\n    post_publishing: {\n      description: `每週 ${data.frequency} 次，時段：${postTimes.join(', ')}`,\n      times: postTimes,\n      frequency: data.frequency,\n      workflow: 'post-scheduler'\n    },\n    analytics_collection: {\n      description: `每週${['日','一','二','三','四','五','六'][analyticsDay]}收集數據`,\n      cron: `0 8 * * ${analyticsDay}`,\n      workflow: 'analytics-collection'\n    },\n    weekly_optimization: {\n      description: `數據收集後自動執行 AI 優化`,\n      cron: `0 10 * * ${analyticsDay}`,\n      workflow: 'weekly-optimization'\n    },\n    customer_identification: {\n      description: '每日掃描新留言識別潛在客戶',\n      cron: '0 20 * * *',\n      workflow: 'customer-identification'\n    }\n  },\n  message: '排程已更新。請在 n8n 中確認 cron 觸發器已同步更新。'\n};\n\n// 注意：在實際部署時，這裡應該透過 n8n API 動態更新 cron 觸發器\n// 目前先記錄設定，由管理員手動在 n8n 中調整\n\nreturn [{ json: summary }];"
+      },
+      "id": "w8-a8000001-0000-0000-0000-000000000004",
+      "name": "8·計算排程",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1020,
+        7250
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "593324924",
+          "cachedResultName": "pipeline_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_id": "={{ $('8·驗證請求').first().json.log_id }}",
+            "status": "success",
+            "message": "={{ $json.message }}",
+            "finished_at": "={{ $now.toISO() }}"
+          },
+          "schema": [
+            {
+              "id": "log_id",
+              "displayName": "log_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_id",
+              "displayName": "brand_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "started_at",
+              "displayName": "started_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finished_at",
+              "displayName": "finished_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "matchingColumns": [
+            "log_id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w8-a8000001-0000-0000-0000-000000000005",
+      "name": "8·記錄完成",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1240,
+        7250
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: $json }) }}"
+      },
+      "id": "w8-a8000001-0000-0000-0000-000000000006",
+      "name": "8·回應成功",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1460,
+        7250
+      ]
+    }
+  ],
+  "connections": {
+    "1·Webhook": {
+      "main": [
+        [
+          {
+            "node": "1·驗證請求",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1·驗證請求": {
+      "main": [
+        [
+          {
+            "node": "1·記錄開始",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1·記錄開始": {
+      "main": [
+        [
+          {
+            "node": "1·讀取品牌資料",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1·讀取品牌資料": {
+      "main": [
+        [
+          {
+            "node": "1·處理品牌設定",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1·處理品牌設定": {
+      "main": [
+        [
+          {
+            "node": "1·記錄完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1·記錄完成": {
+      "main": [
+        [
+          {
+            "node": "1·回應成功",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·Webhook": {
+      "main": [
+        [
+          {
+            "node": "2·驗證請求",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·驗證請求": {
+      "main": [
+        [
+          {
+            "node": "2·記錄開始",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·記錄開始": {
+      "main": [
+        [
+          {
+            "node": "2·讀取品牌資料",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·讀取品牌資料": {
+      "main": [
+        [
+          {
+            "node": "2·組合搜尋關鍵字",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·組合搜尋關鍵字": {
+      "main": [
+        [
+          {
+            "node": "2·Serper 搜尋",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·Serper 搜尋": {
+      "main": [
+        [
+          {
+            "node": "2·彙整搜尋結果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·彙整搜尋結果": {
+      "main": [
+        [
+          {
+            "node": "2·是否 MOCK_GEMINI？",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·AI 評估相關性": {
+      "main": [
+        [
+          {
+            "node": "2·解析 AI 結果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·解析 AI 結果": {
+      "main": [
+        [
+          {
+            "node": "2·寫入主題",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·寫入主題": {
+      "main": [
+        [
+          {
+            "node": "2·批次觸發產文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·記錄完成": {
+      "main": [
+        [
+          {
+            "node": "2·回應成功",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·批次觸發產文": {
+      "main": [
+        [
+          {
+            "node": "2·記錄完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·是否 MOCK_GEMINI？": {
+      "main": [
+        [
+          {
+            "node": "2·假 AI 結果（測試用）",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "2·AI 評估相關性",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·假 AI 結果（測試用）": {
+      "main": [
+        [
+          {
+            "node": "2·解析 AI 結果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·Webhook": {
+      "main": [
+        [
+          {
+            "node": "3·驗證請求",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·驗證請求": {
+      "main": [
+        [
+          {
+            "node": "3·記錄開始",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·記錄開始": {
+      "main": [
+        [
+          {
+            "node": "3·讀取品牌",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·讀取品牌": {
+      "main": [
+        [
+          {
+            "node": "3·讀取已核准主題",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·讀取已核准主題": {
+      "main": [
+        [
+          {
+            "node": "3·讀取優化建議",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·讀取優化建議": {
+      "main": [
+        [
+          {
+            "node": "3·準備 AI 提示",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·準備 AI 提示": {
+      "main": [
+        [
+          {
+            "node": "3·是否 MOCK_GEMINI？",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·AI 生成貼文": {
+      "main": [
+        [
+          {
+            "node": "3·解析貼文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·解析貼文": {
+      "main": [
+        [
+          {
+            "node": "3·合併圖片 URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·合併圖片 URL": {
+      "main": [
+        [
+          {
+            "node": "3·是否重新生成？",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·是否重新生成？": {
+      "main": [
+        [
+          {
+            "node": "3·更新貼文",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "3·拆兩列",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·更新貼文": {
+      "main": [
+        [
+          {
+            "node": "3·記錄完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·拆兩列": {
+      "main": [
+        [
+          {
+            "node": "3·寫入貼文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·寫入貼文": {
+      "main": [
+        [
+          {
+            "node": "3·標記已用主題",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·標記已用主題": {
+      "main": [
+        [
+          {
+            "node": "3·更新主題狀態",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·更新主題狀態": {
+      "main": [
+        [
+          {
+            "node": "3·記錄完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·是否 MOCK_GEMINI？": {
+      "main": [
+        [
+          {
+            "node": "3·假 貼文回應（測試用）",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "3·AI 生成貼文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3·假 貼文回應（測試用）": {
+      "main": [
+        [
+          {
+            "node": "3·解析貼文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4·Webhook": {
+      "main": [
+        [
+          {
+            "node": "4·驗證請求",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4·驗證請求": {
+      "main": [
+        [
+          {
+            "node": "4·記錄開始",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4·記錄開始": {
+      "main": [
+        [
+          {
+            "node": "4·讀取品牌",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4·讀取品牌": {
+      "main": [
+        [
+          {
+            "node": "4·讀取貼文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4·讀取貼文": {
+      "main": [
+        [
+          {
+            "node": "4·prepare_publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4·prepare_publish": {
+      "main": [
+        [
+          {
+            "node": "4·發佈到 Facebook?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4·發佈到 Facebook?": {
+      "main": [
+        [
+          {
+            "node": "4·發佈 Facebook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "4·發佈到 Instagram?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4·發佈 Facebook": {
+      "main": [
+        [
+          {
+            "node": "4·發佈到 Instagram?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4·發佈到 Instagram?": {
+      "main": [
+        [
+          {
+            "node": "4·建立 IG 媒體容器",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "4·合併結果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4·建立 IG 媒體容器": {
+      "main": [
+        [
+          {
+            "node": "4·等待 IG 處理",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4·發佈 IG 媒體": {
+      "main": [
+        [
+          {
+            "node": "4·合併結果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4·合併結果": {
+      "main": [
+        [
+          {
+            "node": "4·更新貼文狀態",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4·更新貼文狀態": {
+      "main": [
+        [
+          {
+            "node": "4·記錄完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4·記錄完成": {
+      "main": [
+        []
+      ]
+    },
+    "4·等待 IG 處理": {
+      "main": [
+        [
+          {
+            "node": "4·發佈 IG 媒體",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5·Webhook": {
+      "main": [
+        [
+          {
+            "node": "5·驗證請求",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5·驗證請求": {
+      "main": [
+        [
+          {
+            "node": "5·記錄開始",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5·記錄開始": {
+      "main": [
+        [
+          {
+            "node": "5·讀取品牌",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "5·讀取已發佈貼文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5·讀取品牌": {
+      "main": [
+        [
+          {
+            "node": "5·展開貼文清單",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5·讀取已發佈貼文": {
+      "main": [
+        [
+          {
+            "node": "5·展開貼文清單",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5·展開貼文清單": {
+      "main": [
+        [
+          {
+            "node": "5·平台判斷",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5·平台判斷": {
+      "main": [
+        [
+          {
+            "node": "5·FB 數據 API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "5·IG 數據 API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5·FB 數據 API": {
+      "main": [
+        [
+          {
+            "node": "5·整理數據",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5·IG 數據 API": {
+      "main": [
+        [
+          {
+            "node": "5·整理數據",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5·整理數據": {
+      "main": [
+        [
+          {
+            "node": "5·寫入數據",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5·寫入數據": {
+      "main": [
+        [
+          {
+            "node": "5·記錄完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5·記錄完成": {
+      "main": [
+        [
+          {
+            "node": "5·回應成功",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6·Webhook": {
+      "main": [
+        [
+          {
+            "node": "6·驗證請求",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6·驗證請求": {
+      "main": [
+        [
+          {
+            "node": "6·記錄開始",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6·記錄開始": {
+      "main": [
+        [
+          {
+            "node": "6·讀取品牌",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "6·讀取數據",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "6·讀取貼文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6·讀取品牌": {
+      "main": [
+        [
+          {
+            "node": "6·準備分析",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6·讀取數據": {
+      "main": [
+        [
+          {
+            "node": "6·準備分析",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6·讀取貼文": {
+      "main": [
+        [
+          {
+            "node": "6·準備分析",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6·準備分析": {
+      "main": [
+        [
+          {
+            "node": "6·AI 優化分析",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6·AI 優化分析": {
+      "main": [
+        [
+          {
+            "node": "6·解析結果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6·解析結果": {
+      "main": [
+        [
+          {
+            "node": "6·寫入優化紀錄",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6·寫入優化紀錄": {
+      "main": [
+        [
+          {
+            "node": "6·記錄完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6·記錄完成": {
+      "main": [
+        [
+          {
+            "node": "6·回應成功",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7·Webhook": {
+      "main": [
+        [
+          {
+            "node": "7·驗證請求",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7·驗證請求": {
+      "main": [
+        [
+          {
+            "node": "7·記錄開始",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7·記錄開始": {
+      "main": [
+        [
+          {
+            "node": "7·讀取品牌",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "7·讀取貼文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7·讀取品牌": {
+      "main": [
+        [
+          {
+            "node": "7·展開貼文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7·讀取貼文": {
+      "main": [
+        [
+          {
+            "node": "7·展開貼文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7·展開貼文": {
+      "main": [
+        [
+          {
+            "node": "7·抓取留言",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7·抓取留言": {
+      "main": [
+        [
+          {
+            "node": "7·彙整留言",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7·彙整留言": {
+      "main": [
+        [
+          {
+            "node": "7·有留言?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7·有留言?": {
+      "main": [
+        [
+          {
+            "node": "7·AI 識別客戶",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "7·回應無留言",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7·AI 識別客戶": {
+      "main": [
+        [
+          {
+            "node": "7·解析客戶",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7·解析客戶": {
+      "main": [
+        [
+          {
+            "node": "7·寫入客戶",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7·寫入客戶": {
+      "main": [
+        [
+          {
+            "node": "7·記錄完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7·記錄完成": {
+      "main": [
+        [
+          {
+            "node": "7·回應成功",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "8·Webhook": {
+      "main": [
+        [
+          {
+            "node": "8·驗證請求",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "8·驗證請求": {
+      "main": [
+        [
+          {
+            "node": "8·記錄開始",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "8·記錄開始": {
+      "main": [
+        [
+          {
+            "node": "8·計算排程",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "8·計算排程": {
+      "main": [
+        [
+          {
+            "node": "8·記錄完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "8·記錄完成": {
+      "main": [
+        [
+          {
+            "node": "8·回應成功",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {}
+}
