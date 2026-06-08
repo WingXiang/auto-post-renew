@@ -4912,6 +4912,106 @@
         1460,
         7250
       ]
+    },
+    {
+      "parameters": {
+        "content": "## 9. 自動發布排程\n**觸發：** 每 15 分鐘\n\n掃描所有 `status=scheduled` 且發佈時間已到的貼文，逐一呼叫 `/webhook/post-scheduler` 真正發到 FB / IG。\n（取代 Vercel cron — 免費方案每天只能跑一次）",
+        "height": 760,
+        "width": 1100,
+        "color": 6
+      },
+      "id": "sticky-section-9",
+      "name": "區段 9：自動發布排程",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        260,
+        8080
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "w9-schedule-trigger",
+      "name": "9·排程觸發（每15分）",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        360,
+        8230
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1821047073",
+          "cachedResultName": "posts"
+        },
+        "options": {},
+        "authentication": "serviceAccount"
+      },
+      "id": "w9-read-posts",
+      "name": "9·讀取待發貼文",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        620,
+        8230
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 篩選出已到期、狀態為 scheduled 的貼文\nconst now = new Date();\nconst out = [];\nfor (const item of $input.all()) {\n  const p = item.json;\n  if (!p || p.status !== 'scheduled') continue;\n  if (!p.scheduled_time) continue;\n  const t = new Date(p.scheduled_time);\n  if (isNaN(t.getTime())) continue;\n  if (t.getTime() <= now.getTime()) {\n    out.push({ json: { brand_id: p.brand_id, post_id: p.post_id } });\n  }\n}\nreturn out;"
+      },
+      "id": "w9-filter-due",
+      "name": "9·篩選到期貼文",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        8230
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://wing.zeabur.app/webhook/post-scheduler",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ api_key: $env.N8N_API_KEY, brand_id: $json.brand_id, post_id: $json.post_id }) }}",
+        "options": {}
+      },
+      "id": "w9-call-publish",
+      "name": "9·呼叫發文",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1140,
+        8230
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
@@ -6006,6 +6106,39 @@
         [
           {
             "node": "8·回應成功",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "9·排程觸發（每15分）": {
+      "main": [
+        [
+          {
+            "node": "9·讀取待發貼文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "9·讀取待發貼文": {
+      "main": [
+        [
+          {
+            "node": "9·篩選到期貼文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "9·篩選到期貼文": {
+      "main": [
+        [
+          {
+            "node": "9·呼叫發文",
             "type": "main",
             "index": 0
           }
