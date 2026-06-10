@@ -5076,7 +5076,8 @@
             }
           ]
         },
-        "options": {}
+        "options": {},
+        "authentication": "serviceAccount"
       },
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,

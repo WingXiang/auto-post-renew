@@ -140,6 +140,7 @@ const writeShishi = {
       schema: ["日期", "瀏覽量", "標題", "領域", "網址", "恐懼", "利好"].map((id) => ({ id, displayName: id, required: false, defaultMatch: false, display: true, type: "string", canBeUsedToMatch: true })),
     },
     options: {},
+    authentication: "serviceAccount",
   },
   type: "n8n-nodes-base.googleSheets",
   typeVersion: 4.5,
