@@ -565,98 +565,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const brand = $input.first().json;\nconst req = $('2·驗證請求').first().json;\nconst keyword = (req.search_keyword || '').trim();\nconst theme = brand.theme || '社群行銷';\nconst audience = brand.target_audience || '一般消費者';\nconst year = new Date().getFullYear();\nlet queries;\nif (keyword) {\n  // 使用者明確指定關鍵字：擴成 3 個變體\n  queries = [\n    keyword,\n    `${keyword} ${year}`,\n    `${keyword} ${audience}`\n  ];\n} else {\n  queries = [\n    `${theme} 趨勢 ${year}`,\n    `${theme} ${audience} 熱門話題`,\n    `${brand.brand_name || ''} 產業 最新消息`\n  ].filter(Boolean);\n}\n// recency → tbs\nconst days = parseInt(req.recency_days, 10);\nlet tbs = '';\nif (days === 7) tbs = 'qdr:w';\nelse if (days === 30) tbs = 'qdr:m';\nelse if (days === 90) tbs = 'qdr:m3';\nreturn queries.map(q => ({ json: { query: q, brand, tbs } }));"
-      },
-      "id": "w2-a2000001-0000-0000-0000-000000000005",
-      "name": "2·組合搜尋關鍵字",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1240,
-        1350
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://google.serper.dev/search",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "X-API-KEY",
-              "value": "={{ $env.SERPER_API_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ q: $json.query, gl: 'tw', hl: 'zh-TW', num: 10, ...($json.tbs ? { tbs: $json.tbs } : {}) }) }}",
-        "options": {}
-      },
-      "id": "w2-a2000001-0000-0000-0000-000000000006",
-      "name": "2·Serper 搜尋",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1460,
-        1350
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// 彙整所有搜尋結果\nconst allResults = [];\n\nfor (const item of $input.all()) {\n  const organic = item.json.organic || [];\n  for (const result of organic) {\n    allResults.push({\n      title: result.title,\n      link: result.link,\n      snippet: result.snippet || ''\n    });\n  }\n}\n\n// 去重（依 link）\nconst seen = new Set();\nconst unique = allResults.filter(r => {\n  if (seen.has(r.link)) return false;\n  seen.add(r.link);\n  return true;\n}).slice(0, 20);\n\nreturn [{\n  json: {\n    results: unique,\n    brand_id: $('2·驗證請求').first().json.brand_id,\n    count: unique.length\n  }\n}];"
-      },
-      "id": "w2-a2000001-0000-0000-0000-000000000007",
-      "name": "2·彙整搜尋結果",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1680,
-        1350
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  systemInstruction: { parts: [{ text: \"你是社群媒體內容策略專家。根據品牌資訊與搜尋結果，挑出最多 7 個與品牌最相關的主題，依 relevance_score 由高到低排序。回傳純 JSON 陣列（不要 markdown 包裹），每個項目包含：topic_title（繁體中文標題，吸睛短句）、source_url、relevance_score（0-100 整數）、brand_relevance（一句話說明此主題與此品牌為何相關）、suggested_angles（建議的 3 種撰寫角度，用 \\\"、\\\" 分隔）、content_type（從這些選一個：教學/案例分享/觀點/工具評測/趨勢）。只回傳 relevance_score >= 50 的主題。\" }] },\n  contents: [{ role: 'user', parts: [{ text: `品牌資訊：\\n品牌名稱：${$('2·讀取品牌資料').first().json.brand_name || ''}\\n主題：${$('2·讀取品牌資料').first().json.theme || ''}\\n目標受眾：${$('2·讀取品牌資料').first().json.target_audience || ''}\\n\\n使用者偏好（若有）：\\n關鍵字：${$('2·驗證請求').first().json.search_keyword || '無'}\\n內容類型：${$('2·驗證請求').first().json.content_type || '不限'}\\n目標讀者：${$('2·驗證請求').first().json.target_reader || '不限'}\\n\\n搜尋結果：\\n${JSON.stringify($json.results.map(r => ({ title: r.title, url: r.link, snippet: r.snippet })))}${$('2·驗證請求').first().json.trends ? '\\n\\n近期社群趨勢（請考量這些趨勢與品牌的關聯性，優先推薦與趨勢吻合的主題）：\\n' + $('2·驗證請求').first().json.trends : ''}` }] }],\n  generationConfig: { temperature: 0.3 }\n}) }}",
-        "options": {
-          "retry": {
-            "maxTries": 3
-          }
-        }
-      },
-      "id": "w2-a2000001-0000-0000-0000-000000000008",
-      "name": "2·AI 評估相關性",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1900,
-        1350
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "jsCode": "const req = $('2·驗證請求').first().json;\nconst brandId = req.brand_id;\nconst response = $input.first().json;\nconst content = response.candidates?.[0]?.content?.parts?.[0]?.text || '[]';\nlet topics;\ntry {\n  const cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  topics = JSON.parse(cleaned);\n} catch (e) {\n  topics = [];\n}\n// 最多 7 個\ntopics = topics.slice(0, 7);\nconst now = new Date().toISOString();\nreturn topics.map((t, i) => ({\n  json: {\n    topic_id: `topic-${Date.now()}-${i}`,\n    brand_id: brandId,\n    topic_title: t.topic_title || t.title || '',\n    source_url: t.source_url || t.url || '',\n    relevance_score: String(t.relevance_score || 0),\n    status: 'pending',\n    brand_relevance: t.brand_relevance || '',\n    suggested_angles: t.suggested_angles || '',\n    content_type: t.content_type || req.content_type || '',\n    target_reader: req.target_reader || '',\n    search_keyword: req.search_keyword || '',\n    archived_at: '',\n    created_at: now\n  }\n}));"
+        "jsCode": "const req = $('2·驗證請求').first().json;\nconst brandId = req.brand_id;\nconst brandTheme = $('2·讀取品牌資料').first().json.theme || '';\nconst response = $input.first().json;\nconst content = response.candidates?.[0]?.content?.parts?.[0]?.text || '[]';\nlet topics;\ntry {\n  const cleaned = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  topics = JSON.parse(cleaned);\n} catch (e) { topics = []; }\ntopics = (Array.isArray(topics) ? topics : []).slice(0, 7);\nconst now = new Date().toISOString();\nreturn topics.map((t, i) => ({\n  json: {\n    topic_id: `topic-${Date.now()}-${i}`,\n    brand_id: brandId,\n    topic_title: t.topic_title || t['標題'] || '',\n    source_url: t.source_url || t['網址'] || '',\n    relevance_score: String(t.relevance_score || 0),\n    status: 'pending',\n    brand_relevance: t.brand_relevance || '',\n    suggested_angles: t.suggested_angles || '',\n    content_type: t.content_type || req.content_type || '',\n    target_reader: req.target_reader || '',\n    search_keyword: req.search_keyword || '',\n    archived_at: '',\n    created_at: now,\n    '領域': brandTheme,\n    '瀏覽量': String(t.views || t['瀏覽量'] || ''),\n    '恐懼鉤子': t.fear || t['恐懼鉤子'] || '',\n    '利好理由': t.benefit || t['利好理由'] || ''\n  }\n}));"
       },
       "id": "w2-a2000001-0000-0000-0000-000000000009",
       "name": "2·解析 AI 結果",
@@ -696,7 +605,11 @@
             "content_type": "={{ $json.content_type }}",
             "target_reader": "={{ $json.target_reader }}",
             "search_keyword": "={{ $json.search_keyword }}",
-            "archived_at": "={{ $json.archived_at }}"
+            "archived_at": "={{ $json.archived_at }}",
+            "領域": "={{ $json['領域'] }}",
+            "瀏覽量": "={{ $json['瀏覽量'] }}",
+            "恐懼鉤子": "={{ $json['恐懼鉤子'] }}",
+            "利好理由": "={{ $json['利好理由'] }}"
           },
           "schema": [
             {
@@ -810,6 +723,42 @@
             {
               "id": "archived_at",
               "displayName": "archived_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "領域",
+              "displayName": "領域",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "瀏覽量",
+              "displayName": "瀏覽量",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "恐懼鉤子",
+              "displayName": "恐懼鉤子",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "利好理由",
+              "displayName": "利好理由",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -993,50 +942,6 @@
       "typeVersion": 2,
       "position": [
         2560,
-        1250
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "combinator": "and",
-          "conditions": [
-            {
-              "id": "mock-check",
-              "leftValue": "={{ $env.MOCK_GEMINI }}",
-              "rightValue": "true",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ]
-        }
-      },
-      "id": "w2-a2000001-0000-0000-0000-00000000mif",
-      "name": "2·是否 MOCK_GEMINI？",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        1820,
-        1350
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// MOCK MODE：回傳假 AI 結果，模擬 Gemini 回應格式\nconst MOCK_TOPICS = [{\"topic_title\": \"【測試】2026 一人公司 AI 自動化必備工具清單\", \"source_url\": \"https://example.com/mock/tools\", \"relevance_score\": 98, \"brand_relevance\": \"直接命中品牌目標受眾「想用 AI 自動化的個人創業者」核心需求\", \"suggested_angles\": \"依預算分級的工具推薦、個人實測心得、新手避雷指南\", \"content_type\": \"工具評測\"}, {\"topic_title\": \"【測試】從零開始：個人創業者的 AI 自動化流程拆解\", \"source_url\": \"https://example.com/mock/workflow\", \"relevance_score\": 96, \"brand_relevance\": \"新手友善內容，可擴大潛在受眾\", \"suggested_angles\": \"5 步驟流程圖、真實案例追蹤、常見卡關點\", \"content_type\": \"教學\"}, {\"topic_title\": \"【測試】一人公司年營收破千萬：他靠這 3 個 AI 自動化做到\", \"source_url\": \"https://example.com/mock/case\", \"relevance_score\": 94, \"brand_relevance\": \"成功案例最容易引發共鳴與分享\", \"suggested_angles\": \"數字背後的決策、可複製的 SOP、心態調整\", \"content_type\": \"案例分享\"}, {\"topic_title\": \"【測試】別再迷信『AI 取代人類』— 一人公司真正該追的是什麼\", \"source_url\": \"https://example.com/mock/opinion\", \"relevance_score\": 88, \"brand_relevance\": \"建立品牌獨立思考的權威感\", \"suggested_angles\": \"破除迷思、實務角度、價值觀闡述\", \"content_type\": \"觀點\"}, {\"topic_title\": \"【測試】2026 趨勢：個人品牌 × AI Agent 新商業模式\", \"source_url\": \"https://example.com/mock/trend\", \"relevance_score\": 85, \"brand_relevance\": \"前瞻內容能塑造領導者形象\", \"suggested_angles\": \"市場數據、潛在機會、實戰準備\", \"content_type\": \"趨勢\"}, {\"topic_title\": \"【測試】Notion + AI 一人公司營運系統實戰\", \"source_url\": \"https://example.com/mock/notion\", \"relevance_score\": 82, \"brand_relevance\": \"Notion 是受眾常用工具，搭配 AI 是熱門組合\", \"suggested_angles\": \"模板分享、自動化範例、效率對比\", \"content_type\": \"教學\"}, {\"topic_title\": \"【測試】我用 AI 把 1 個人運作成 5 人團隊，每月省 18 小時\", \"source_url\": \"https://example.com/mock/efficiency\", \"relevance_score\": 80, \"brand_relevance\": \"省時數據具體可驗證，易引發轉發\", \"suggested_angles\": \"週流程對照、工具堆疊、心境改變\", \"content_type\": \"案例分享\"}];\nreturn [{\n  json: {\n    candidates: [{\n      content: { parts: [{ text: JSON.stringify(MOCK_TOPICS) }] }\n    }]\n  }\n}];"
-      },
-      "id": "w2-a2000001-0000-0000-0000-00000000mck",
-      "name": "2·假 AI 結果（測試用）",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2020,
         1250
       ]
     },
@@ -5012,6 +4917,181 @@
         8230
       ],
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=你是公司的行銷長，為「{{ $('2·讀取品牌資料').first().json.theme || '社群行銷' }}」這個領域做收名單行銷內容策劃。\n品牌：{{ $('2·讀取品牌資料').first().json.brand_name || '' }}；目標受眾：{{ $('2·讀取品牌資料').first().json.target_audience || '一般大眾' }}。\n{{ $('2·驗證請求').first().json.search_keyword ? '使用者特別想聚焦的關鍵字：' + $('2·驗證請求').first().json.search_keyword : '' }}\n\n請搜尋近一個月內、台灣（排除中國大陸）與此領域相關、且與「職涯／轉職／高薪／人才／趨勢／大數據報告」其中一項有關的最新重要時事。\n條件：必須是整體環境趨勢或重大事件、瀏覽量高、有大數據佐證（報告/統計/調查），不能是單一品牌廣告或促銷。\n\n請列出最多 7 則，每則務必包含：\n1. 標題（吸睛繁體中文短句，融合恐懼與利好概念；若為國外新聞，標題結尾加上對台灣職場的關聯/影響）\n2. 日期（yyyy-MM-dd）\n3. 網址\n4. 瀏覽量（概略阿拉伯數字）\n5. 恐懼鉤子（一句話：不行動就會落後／被淘汰）\n6. 利好理由（一句話：掌握後能得到什麼好處／站上什麼位置）\n只輸出條列內容，不要其他說明。",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1180,
+        1240
+      ],
+      "id": "w2-perplexity-agent",
+      "name": "2·Perplexity 時事研究"
+    },
+    {
+      "parameters": {
+        "model": "perplexity/sonar-pro",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        1460
+      ],
+      "id": "w2-openrouter-model",
+      "name": "2·OpenRouter Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "lgVpYGGdH7A0e3CU",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ systemInstruction: { parts: [{ text: '你是社群內容策略專家。把使用者提供的時事清單整理成純 JSON 陣列（不要 markdown 包裹），最多 7 筆，依重要性/瀏覽量由高到低。每個項目包含：topic_title(繁中吸睛標題)、source_url、relevance_score(0-100整數)、brand_relevance(一句話說明與品牌關聯)、suggested_angles(3種撰寫角度用、分隔)、content_type(從 教學/案例分享/觀點/工具評測/趨勢 擇一)、views(瀏覽量純數字字串)、fear(恐懼鉤子一句)、benefit(利好理由一句)。' }] }, contents: [{ role: 'user', parts: [{ text: ('品牌主題：' + ($('2·讀取品牌資料').first().json.theme || '') + '\\n\\n時事清單：\\n' + ($('2·Perplexity 時事研究').first().json.output || '')) }] }], generationConfig: { temperature: 0.3 }}) }}",
+        "options": {
+          "retry": {
+            "maxTries": 3
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        1240
+      ],
+      "id": "w2-organize",
+      "name": "2·整理時事"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "326635734",
+          "cachedResultName": "時事"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "日期": "={{ ($json.created_at || '').slice(0,10) }}",
+            "瀏覽量": "={{ $json['瀏覽量'] }}",
+            "標題": "={{ $json.topic_title }}",
+            "領域": "={{ $json['領域'] }}",
+            "網址": "={{ $json.source_url }}",
+            "恐懼": "={{ $json['恐懼鉤子'] }}",
+            "利好": "={{ $json['利好理由'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "日期",
+              "displayName": "日期",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "瀏覽量",
+              "displayName": "瀏覽量",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "標題",
+              "displayName": "標題",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "領域",
+              "displayName": "領域",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "網址",
+              "displayName": "網址",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "恐懼",
+              "displayName": "恐懼",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "利好",
+              "displayName": "利好",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2100,
+        1420
+      ],
+      "id": "w2-write-shishi",
+      "name": "2·寫入時事",
+      "credentials": {
+        "googleApi": {
+          "id": "M653HfRFnL0gLZej",
+          "name": "Google Sheets SA"
+        }
+      }
     }
   ],
   "connections": {
@@ -5118,51 +5198,7 @@
       "main": [
         [
           {
-            "node": "2·組合搜尋關鍵字",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "2·組合搜尋關鍵字": {
-      "main": [
-        [
-          {
-            "node": "2·Serper 搜尋",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "2·Serper 搜尋": {
-      "main": [
-        [
-          {
-            "node": "2·彙整搜尋結果",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "2·彙整搜尋結果": {
-      "main": [
-        [
-          {
-            "node": "2·是否 MOCK_GEMINI？",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "2·AI 評估相關性": {
-      "main": [
-        [
-          {
-            "node": "2·解析 AI 結果",
+            "node": "2·Perplexity 時事研究",
             "type": "main",
             "index": 0
           }
@@ -5184,7 +5220,7 @@
       "main": [
         [
           {
-            "node": "2·批次觸發產文",
+            "node": "2·寫入時事",
             "type": "main",
             "index": 0
           }
@@ -5207,35 +5243,6 @@
         [
           {
             "node": "2·記錄完成",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "2·是否 MOCK_GEMINI？": {
-      "main": [
-        [
-          {
-            "node": "2·假 AI 結果（測試用）",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "2·AI 評估相關性",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "2·假 AI 結果（測試用）": {
-      "main": [
-        [
-          {
-            "node": "2·解析 AI 結果",
             "type": "main",
             "index": 0
           }
@@ -6139,6 +6146,50 @@
         [
           {
             "node": "9·呼叫發文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·OpenRouter Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "2·Perplexity 時事研究",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·Perplexity 時事研究": {
+      "main": [
+        [
+          {
+            "node": "2·整理時事",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·整理時事": {
+      "main": [
+        [
+          {
+            "node": "2·解析 AI 結果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2·寫入時事": {
+      "main": [
+        [
+          {
+            "node": "2·批次觸發產文",
             "type": "main",
             "index": 0
           }
