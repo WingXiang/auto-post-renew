@@ -429,6 +429,24 @@ function TopicCard({
       </button>
       {expanded && (
         <div className="mt-3 space-y-2 border-t border-gray-100 pt-3 text-xs">
+          {topic["恐懼鉤子"] && (
+            <div>
+              <div className="font-semibold text-red-700">😰 恐懼鉤子</div>
+              <div className="text-gray-600">{topic["恐懼鉤子"]}</div>
+            </div>
+          )}
+          {topic["利好理由"] && (
+            <div>
+              <div className="font-semibold text-green-700">✨ 利好理由</div>
+              <div className="text-gray-600">{topic["利好理由"]}</div>
+            </div>
+          )}
+          {(topic["領域"] || topic["瀏覽量"]) && (
+            <div className="flex flex-wrap gap-2 text-gray-500">
+              {topic["領域"] && <span>領域：{topic["領域"]}</span>}
+              {topic["瀏覽量"] && <span>· 瀏覽量：{topic["瀏覽量"]}</span>}
+            </div>
+          )}
           {topic.brand_relevance && (
             <div>
               <div className="font-semibold text-gray-700">為什麼相關</div>

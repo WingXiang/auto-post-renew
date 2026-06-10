@@ -31,6 +31,11 @@ export interface Topic {
   search_keyword: string;      // 此主題在哪次搜尋被找到（使用者輸入的關鍵字）
   archived_at: string;         // 空字串 = 未封存；ISO 時間 = 已封存
   created_at?: string;
+  // 行銷時事研究新增欄位（與「時事」分頁同名，由 Perplexity/Serper 研究產生）
+  "領域"?: string;             // 對應品牌 theme / 研究領域
+  "瀏覽量"?: string;           // 該時事的概略瀏覽量
+  "恐懼鉤子"?: string;         // 激發「不行動就落後」情緒的短句
+  "利好理由"?: string;         // 掌握此趨勢能得到什麼好處
 }
 
 export interface Post {
