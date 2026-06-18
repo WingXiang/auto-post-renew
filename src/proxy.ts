@@ -6,6 +6,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/webhooks(.*)",
   "/api/upload-base64", // called from n8n with shared-secret auth
   "/api/cron(.*)", // called by Vercel Cron with CRON_SECRET bearer
+  "/api/cover(.*)", // 封面圖渲染：FB/IG 與版型庫需公開抓取
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

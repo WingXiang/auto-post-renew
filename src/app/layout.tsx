@@ -20,6 +20,7 @@ const navItems = [
   { href: "/brand", label: "品牌設定" },
   { href: "/topics", label: "主題管理" },
   { href: "/posts", label: "貼文排程" },
+  { href: "/templates", label: "封面版型庫" },
   { href: "/analytics", label: "數據分析" },
   { href: "/customers", label: "潛在客戶" },
 ];

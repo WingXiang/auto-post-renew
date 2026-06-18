@@ -1751,7 +1751,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// 套用固定配圖（依使用者指定）\nconst FIXED_IMG = 'https://i.ibb.co/WWVf0Zm9/content.jpg';\nconst topicTitle = (($('3·驗證請求').first() || {}).json || {}).topic_title || '';\nconst results = [];\nfor (const item of $input.all()) {\n  const post = item.json;\n  results.push({ json: { ...post, image_url: FIXED_IMG, topic_title: topicTitle || post.topic_title || '' } });\n}\nreturn results;"
+        "jsCode": "// 依內容自動產生封面圖（由 AutoPost 網站決定版型並渲染成配圖）\nconst BASE = 'https://auto-post-renew.vercel.app';\nconst req = (($('3·驗證請求').first() || {}).json) || {};\nconst brand = (($('3·讀取品牌').first() || {}).json) || {};\nconst topicTitle = req.topic_title || '';\nconst brandName = brand.brand_name || '';\nconst results = [];\nfor (const item of $input.all()) {\n  const post = item.json;\n  const title = post.topic_title || topicTitle || '';\n  const caption = String(post.caption || '').slice(0, 420);\n  const qs = new URLSearchParams();\n  if (title) qs.set('title', title);\n  if (caption) qs.set('caption', caption);\n  if (brandName) qs.set('brand', brandName);\n  const image_url = BASE + '/api/cover?' + qs.toString();\n  results.push({ json: { ...post, image_url, topic_title: title } });\n}\nreturn results;"
       },
       "id": "w3-a3000001-0000-0000-0000-00000000ig03",
       "name": "3·合併圖片 URL",
